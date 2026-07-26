@@ -1,0 +1,13 @@
+{
+  "name": "运营团队",
+  "categories": [
+    {
+      "name": "内容与素材",
+      "icon": "创",
+      "links": [
+        {"name": "Canva", "url": "https://www.canva.com", "description": "在线设计协作", "icon": "CA"},
+        {"name": "Notion", "url": "https://www.notion.so", "description": "内容计划与文档", "icon": "NO"}
+      ]
+    }
+  ]
+}

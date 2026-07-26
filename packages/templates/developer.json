@@ -1,0 +1,40 @@
+{
+  "name": "开发团队",
+  "categories": [
+    {
+      "name": "代码与项目",
+      "description": "开发协作与交付入口",
+      "icon": "⌘",
+      "links": [
+        {
+          "name": "GitHub",
+          "url": "https://github.com",
+          "description": "代码托管与协作",
+          "icon": "GH",
+          "tags": ["开发", "常用"]
+        },
+        {
+          "name": "Linear",
+          "url": "https://linear.app",
+          "description": "项目与问题跟踪",
+          "icon": "LI",
+          "tags": ["项目"]
+        }
+      ]
+    },
+    {
+      "name": "运行与监控",
+      "description": "环境、指标与日志",
+      "icon": "◎",
+      "links": [
+        {
+          "name": "Grafana",
+          "url": "https://grafana.com",
+          "description": "可观测性面板",
+          "icon": "GR",
+          "tags": ["监控"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "跨境电商",
+  "categories": [
+    {
+      "name": "店铺运营",
+      "icon": "店",
+      "links": [
+        {"name": "Shopify", "url": "https://www.shopify.com", "description": "独立站管理", "icon": "SH"},
+        {"name": "Amazon Seller", "url": "https://sellercentral.amazon.com", "description": "卖家中心", "icon": "AZ"}
+      ]
+    },
+    {
+      "name": "营销与数据",
+      "icon": "数",
+      "links": [
+        {"name": "Google Analytics", "url": "https://analytics.google.com", "description": "流量与转化分析", "icon": "GA"}
+      ]
+    }
+  ]
+}

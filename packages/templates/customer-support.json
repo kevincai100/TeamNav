@@ -1,0 +1,13 @@
+{
+  "name": "客服售后",
+  "categories": [
+    {
+      "name": "客户服务",
+      "icon": "客",
+      "links": [
+        {"name": "Chatwoot", "url": "https://www.chatwoot.com", "description": "全渠道客服平台", "icon": "CW"},
+        {"name": "Notion", "url": "https://www.notion.so", "description": "产品知识库", "icon": "NO"}
+      ]
+    }
+  ]
+}

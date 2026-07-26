@@ -1,0 +1,14 @@
+.create-page > h1, .create-result > h1 { margin: 12px 0 12px; font-size: 38px; }
+.create-page > .muted { margin-bottom: 26px; }
+.create-form { margin-top: 28px; }
+.create-submit { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-top: 1px solid var(--line); background: var(--surface-soft); }
+.create-submit span { color: var(--muted); font-size: 12px; }
+.success-mark { width: 52px; height: 52px; display: grid; place-items: center; margin-bottom: 22px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); }
+.result-row { margin-top: 28px; padding: 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.result-label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 12px; font-weight: 700; }.result-row code, .result-secret code { overflow-wrap: anywhere; font-size: 13px; }
+.result-secret { margin-top: 12px; padding: 20px; border: 1px solid #e8b278; border-radius: 8px; background: #fff8ec; }
+.secret-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #734816; }.secret-actions { display: flex; gap: 8px; margin: 18px 0 12px; }.result-secret > p { margin: 0; color: #835d31; font-size: 13px; }
+.result-share { margin: 26px 0; display: flex; align-items: center; gap: 24px; padding: 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }.result-share p { margin: 7px 0 8px; }
+.save-confirm { display: flex; align-items: center; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }.save-confirm input { width: 18px; height: 18px; accent-color: var(--accent); }.save-confirm span { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.result-actions { display: flex; gap: 10px; margin-top: 18px; }.disabled-link { opacity: .45; pointer-events: none; }
+@media (max-width: 560px) { .create-submit, .result-actions { align-items: stretch; flex-direction: column; }.result-share { align-items: flex-start; flex-direction: column; }.secret-actions { flex-direction: column; }.result-actions .button { width: 100%; } }

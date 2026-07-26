@@ -1,0 +1,13 @@
+{
+  "name": "项目工作台",
+  "categories": [
+    {
+      "name": "项目入口",
+      "icon": "项",
+      "links": [
+        {"name": "项目文档", "url": "https://docs.google.com", "description": "方案与会议记录", "icon": "文"},
+        {"name": "项目看板", "url": "https://trello.com", "description": "任务推进", "icon": "板"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "AI 工具集合",
+  "categories": [
+    {
+      "name": "AI 助手",
+      "icon": "AI",
+      "links": [
+        {"name": "ChatGPT", "url": "https://chatgpt.com", "description": "通用 AI 助手", "icon": "CG"},
+        {"name": "OpenAI Platform", "url": "https://platform.openai.com", "description": "API 与开发者工具", "icon": "OA"}
+      ]
+    }
+  ]
+}
