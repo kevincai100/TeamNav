@@ -4,6 +4,13 @@
 
 Copy `.env.example` to `.env`, replace `SECRET_KEY` and `ADMIN_TOKEN` with long random values, then choose a database mode.
 
+To deploy published images instead of building from source:
+
+```bash
+docker compose pull
+docker compose up -d --no-build
+```
+
 SQLite (single-instance, lightweight):
 
 ```bash
@@ -19,17 +26,20 @@ docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --build
 
 For an external database, set `DATABASE_URL` to a `postgresql+asyncpg://` or `mysql+asyncmy://` URL and use the base command. URL-encode database credentials containing reserved characters.
 
-The web interface is available at `http://localhost:3000`; API readiness is at `http://localhost:8000/health/ready`.
+The web interface is available at `http://localhost:3000`; API readiness is proxied at
+`http://localhost:3000/health/ready`. The API and web containers are not published directly.
 
-For a TLS deployment, set `APP_URL`, `NEXT_PUBLIC_API_URL`, `CORS_ORIGINS`, and `COOKIE_SECURE=true`, then place both services behind a TLS reverse proxy. Never expose a database port publicly.
+For a TLS deployment, set `APP_URL` and `CORS_ORIGINS` to the public gateway origin, keep
+`NEXT_PUBLIC_API_URL` empty, set `COOKIE_SECURE=true`, then place the gateway behind a TLS reverse
+proxy. Never expose the API, web, or database container ports publicly.
 
 ## Upgrade
 
 1. Back up the database.
 2. Pull the new source or image tag.
-3. Run `docker compose build --pull`.
+3. For published images, run `docker compose pull`. For a source deployment, run `docker compose build --pull`.
 4. Run `docker compose up -d`. The API runs forward migrations before accepting traffic.
-5. Verify `/health/ready` and the public creation flow.
+5. Verify the gateway `/health/ready`, account session restoration and the public creation flow.
 
 ## Backup and restore
 

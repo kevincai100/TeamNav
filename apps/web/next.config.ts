@@ -1,12 +1,16 @@
 import type { NextConfig } from "next";
 
-const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const apiOrigin = process.env.NEXT_PUBLIC_API_URL?.trim() || (
+  process.env.NODE_ENV === "development" ? "http://localhost:8000" : ""
+);
 const developmentEval = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
+const developmentConnections = process.env.NODE_ENV === "development" ? " ws: wss:" : "";
+const externalApi = apiOrigin ? ` ${apiOrigin}` : "";
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${developmentEval}`,
   "style-src 'self' 'unsafe-inline'",
-  `connect-src 'self' ${apiOrigin} ws: wss:`,
+  `connect-src 'self'${externalApi}${developmentConnections}`,
   "img-src 'self' data: https: http:",
   "font-src 'self' data:",
   "object-src 'none'",
@@ -18,6 +22,7 @@ const csp = [
 const nextConfig: NextConfig = {
   output: "standalone",
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
+  images: { unoptimized: true },
   async headers() {
     return [
       {

@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -149,6 +149,9 @@ class SiteService:
 
     async def _check_rate_limit(self, ip_hash: str) -> None:
         current = datetime.now(UTC)
+        await self.session.execute(
+            delete(CreateAttempt).where(CreateAttempt.created_at < current - timedelta(days=1))
+        )
         hour_count = await self.session.scalar(
             select(func.count())
             .select_from(CreateAttempt)

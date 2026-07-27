@@ -24,6 +24,9 @@ class ManageAuth:
     async def exchange_key(self, site: Site, edit_key: str) -> tuple[str, str]:
         if not verify_token(edit_key, site.edit_key_hash, self.settings.secret_key):
             raise AuthenticationError
+        await self.session.execute(
+            delete(ManageSession).where(ManageSession.expires_at <= datetime.now(UTC))
+        )
         session_token = generate_token()
         csrf_token = generate_token()
         self.session.add(
@@ -82,6 +85,9 @@ class AccessAuth:
             password, site.access_password_hash
         ):
             raise AuthenticationError
+        await self.session.execute(
+            delete(AccessSession).where(AccessSession.expires_at <= datetime.now(UTC))
+        )
         token = generate_token()
         self.session.add(
             AccessSession(

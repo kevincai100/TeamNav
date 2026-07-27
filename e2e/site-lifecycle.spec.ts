@@ -124,3 +124,36 @@ test("owner can let anonymous visitors export public bookmarks", async ({ page, 
   expect(content).toContain("Public Bookmark Workspace");
   await visitorContext.close();
 });
+
+test("account session restores editing credentials in a new tab", async ({ page, context }) => {
+  await page.goto("/account");
+  await page.getByRole("button", { name: "注册" }).click();
+  await page.getByLabel("邮箱").fill("persistent-owner@example.com");
+  await page.getByLabel("密码").fill("correct-horse-battery");
+  await page.getByRole("button", { name: "注册并登录" }).click();
+  await expect(page.getByRole("heading", { name: "我的工作台" })).toBeVisible();
+
+  await page.goto("/create");
+  await page.getByLabel("站点名称 *").fill("Persistent Account Workspace");
+  const captcha = page.locator("#captcha-answer");
+  const label = await page.locator('label[for="captcha-answer"]').textContent();
+  const numbers = label?.match(/(\d+)\s*\+\s*(\d+)/);
+  expect(numbers).not.toBeNull();
+  await captcha.fill(String(Number(numbers?.[1]) + Number(numbers?.[2])));
+  await page.getByRole("button", { name: "创建导航站" }).click();
+  await expect(page.getByText("创建完成")).toBeVisible();
+
+  const returningPage = await context.newPage();
+  await returningPage.goto("/account");
+  await expect(returningPage.getByText("Persistent Account Workspace")).toBeVisible();
+  expect(
+    await returningPage.evaluate(() => sessionStorage.getItem("teamnav_account_csrf")),
+  ).toBeTruthy();
+  await returningPage.getByTitle("管理").click();
+  await expect(returningPage.getByText("管理模式")).toBeVisible();
+  await returningPage.getByRole("button", { name: "设置" }).click();
+  await returningPage.getByRole("checkbox", { name: "允许访客导出书签" }).check();
+  await returningPage.getByRole("button", { name: "保存访问设置" }).click();
+  await expect(returningPage.getByText("站点设置已保存")).toBeVisible();
+  await returningPage.close();
+});

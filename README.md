@@ -51,6 +51,15 @@ Open `http://localhost:3000`. The web app expects the API at `http://localhost:8
 ## Docker deployment
 
 Create `.env` from `.env.example` and set unique values for `SECRET_KEY` and `ADMIN_TOKEN`.
+The default Compose stack exposes a single gateway at `http://localhost:3000`; API requests stay
+same-origin and are forwarded to the private API container.
+
+Pull the published images without building locally:
+
+```bash
+docker compose pull
+docker compose up -d --no-build
+```
 
 Lightweight SQLite, suitable for one application instance:
 
@@ -72,7 +81,9 @@ docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --build
 
 To use an external PostgreSQL or MySQL server, set `DATABASE_URL` in `.env` and use the lightweight base command; the SQLite volume remains mounted but is unused. Examples are provided in `.env.example`. Database tables are migrated automatically whenever the API container starts.
 
-For internet deployments, use TLS, set the public URLs and CORS origin, and set `COOKIE_SECURE=true`. Detailed upgrade, backup and restore steps are in [operations](docs/operations.md).
+For internet deployments, use TLS, set `APP_URL` and `CORS_ORIGINS` to the public gateway origin,
+and set `COOKIE_SECURE=true`. `NEXT_PUBLIC_API_URL` should remain empty for the portable same-origin
+image. Detailed upgrade, backup and restore steps are in [operations](docs/operations.md).
 
 ## Verification
 

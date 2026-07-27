@@ -73,6 +73,18 @@ class AccountAuth:
         except AccountAuthenticationError:
             return None
 
+    async def restore(self, token: str | None) -> tuple[User, str]:
+        if not token:
+            raise AccountAuthenticationError
+        user, user_session = await self.authenticate(token)
+        csrf = self._csrf_token(token)
+        user_session.csrf_token_hash = token_digest(csrf, self.settings.secret_key)
+        user_session.expires_at = datetime.now(UTC) + timedelta(
+            days=self.settings.account_session_days
+        )
+        await self.session.commit()
+        return user, csrf
+
     def check_csrf(self, user_session: UserSession, token: str | None) -> None:
         if not token or not verify_token(
             token, user_session.csrf_token_hash, self.settings.secret_key
@@ -89,8 +101,11 @@ class AccountAuth:
             await self.session.commit()
 
     async def _create_session(self, user_id: str) -> tuple[str, str]:
+        await self.session.execute(
+            delete(UserSession).where(UserSession.expires_at <= datetime.now(UTC))
+        )
         token = generate_token()
-        csrf = generate_token()
+        csrf = self._csrf_token(token)
         self.session.add(
             UserSession(
                 user_id=user_id,
@@ -100,3 +115,6 @@ class AccountAuth:
             )
         )
         return token, csrf
+
+    def _csrf_token(self, session_token: str) -> str:
+        return token_digest(f"account-csrf:{session_token}", self.settings.secret_key)

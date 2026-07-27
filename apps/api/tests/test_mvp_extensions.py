@@ -278,6 +278,38 @@ async def test_account_collects_new_sites_and_can_claim_anonymous_sites(
 
 
 @pytest.mark.asyncio
+async def test_account_session_restores_csrf_after_browser_state_is_lost(
+    client: AsyncClient,
+) -> None:
+    registered = await client.post(
+        "/api/v1/account/register",
+        json={"email": "returning@example.com", "password": "correct-horse-battery"},
+    )
+    assert registered.status_code == 201
+    assert "Max-Age=2592000" in registered.headers["set-cookie"]
+    assert "Path=/api/v1" in registered.headers["set-cookie"]
+    owned = await create_site(client, "Persistent Account Workspace")
+    slug = owned["site"]["public_slug"]
+
+    restored = await client.post("/api/v1/account/session")
+    assert restored.status_code == 200
+    assert restored.json()["email"] == "returning@example.com"
+    assert restored.json()["csrf_token"]
+    assert "Max-Age=2592000" in restored.headers["set-cookie"]
+
+    restored_again = await client.post("/api/v1/account/session")
+    assert restored_again.status_code == 200
+    assert restored_again.json()["csrf_token"] == restored.json()["csrf_token"]
+
+    updated = await client.patch(
+        f"/api/v1/manage/sites/{slug}",
+        headers={"X-CSRF-Token": restored.json()["csrf_token"]},
+        json={"description": "Recovered in a new browser tab"},
+    )
+    assert updated.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_batch_links_accept_optional_tags(client: AsyncClient) -> None:
     created = await create_site(client)
     slug, csrf = await manage(client, created)

@@ -58,6 +58,28 @@ async def login(
     return {"email": user.email, "csrf_token": csrf}
 
 
+@router.post("/session")
+async def restore_session(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict:
+    token = request.cookies.get("teamnav_account")
+    if not token:
+        raise HTTPException(status_code=401, detail={"code": "ACCOUNT_SESSION_REQUIRED"})
+    try:
+        user, csrf = await AccountAuth(session, settings).restore(token)
+    except AccountAuthenticationError as error:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "ACCOUNT_SESSION_REQUIRED"},
+        ) from error
+    set_account_cookie(response, token, settings)
+    response.headers["Cache-Control"] = "private, no-store"
+    return {"email": user.email, "csrf_token": csrf}
+
+
 @router.post("/logout", status_code=204)
 async def logout(
     request: Request,

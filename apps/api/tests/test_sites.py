@@ -1,5 +1,8 @@
 import pytest
 from httpx import AsyncClient
+from pydantic import ValidationError
+
+from app.core.config import Settings
 
 
 async def create_managed_site(client: AsyncClient, name: str = "产品团队") -> tuple[str, str]:
@@ -15,6 +18,17 @@ async def create_managed_site(client: AsyncClient, name: str = "产品团队") -
         json={"edit_key": created["recovery_payload"]["edit_key"]},
     )
     return slug, accepted.json()["csrf_token"]
+
+
+def test_settings_reject_invalid_session_and_admin_security_values() -> None:
+    with pytest.raises(ValidationError):
+        Settings(account_session_days=0)
+    with pytest.raises(ValidationError):
+        Settings(admin_token="too-short")
+    with pytest.raises(ValidationError):
+        Settings(secret_key="replace-with-at-least-32-random-characters")
+    with pytest.raises(ValidationError):
+        Settings(admin_token="replace-with-a-long-random-admin-token")
 
 
 @pytest.mark.asyncio
