@@ -17,6 +17,13 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   await page.getByTestId("manage-link").click();
   await expect(page.getByText("管理模式")).toBeVisible();
 
+  await page.getByRole("button", { name: "外观" }).click();
+  await page.getByLabel("选择品牌色 #2563EB").click();
+  await page.getByRole("button", { name: "描边" }).click();
+  await page.getByRole("button", { name: "紧凑" }).click();
+  await page.getByRole("button", { name: "保存并发布外观" }).click();
+  await page.getByRole("button", { name: "内容" }).click();
+
   await page.getByLabel("分类名称").fill("Engineering");
   await page.getByTitle("添加分类").click();
   await expect(page.locator('.category-name-input[value="Engineering"]')).toBeVisible();
@@ -52,10 +59,14 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   const slug = new URL(oldManageUrl!).pathname.split("/").at(-1);
   const publicPage = await page.context().newPage();
   await publicPage.goto(`/s/${slug}`);
+  await expect(publicPage.locator(".nav-view")).toHaveClass(/cards-outline/);
+  await expect(publicPage.locator(".nav-view")).toHaveClass(/density-compact/);
+  await expect(publicPage.locator(".nav-view")).toHaveCSS("--site-accent", "#2563EB");
   await publicPage.getByLabel("搜索导航链接").fill("engineering");
   await expect(publicPage.getByText("Engineering Portal")).toBeVisible();
   await publicPage.close();
 
+  await page.getByRole("button", { name: "设置" }).click();
   await page.locator("details.danger-zone summary").click();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "轮换私密编辑链接" }).click();

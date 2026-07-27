@@ -22,6 +22,16 @@ class PasswordUnlock(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class LayoutConfig(BaseModel):
+    accent_color: str = Field(default="#167D68", pattern=r"^#[0-9A-Fa-f]{6}$")
+    canvas_style: Literal["clean", "soft", "contrast"] = "soft"
+    card_style: Literal["solid", "outline", "minimal"] = "solid"
+    content_width: Literal["compact", "standard", "wide"] = "standard"
+    columns: Literal[2, 3, 4] = 3
+    density: Literal["comfortable", "compact"] = "comfortable"
+    header_alignment: Literal["left", "center"] = "left"
+
+
 class SiteUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=300)
@@ -31,6 +41,9 @@ class SiteUpdate(BaseModel):
     show_search: bool | None = None
     show_updated_at: bool | None = None
     show_visit_count: bool | None = None
+    show_descriptions: bool | None = None
+    show_tags: bool | None = None
+    layout_config: LayoutConfig | None = None
     access_password: str | None = Field(default=None, max_length=128)
 
     @field_validator("access_password")

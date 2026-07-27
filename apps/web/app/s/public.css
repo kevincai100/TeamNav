@@ -1,3 +1,6 @@
-.unlock-page { min-height: calc(100vh - 64px); display: grid; place-items: center; padding: 28px; }
-.unlock-panel { width: min(420px, 100%); padding: 30px; }.unlock-panel h1 { margin: 16px 0 8px; font-size: 25px; }.unlock-panel .field { margin: 24px 0 12px; }.unlock-panel .button { width: 100%; margin-top: 8px; }
-.unlock-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 8px; background: var(--accent-soft); color: var(--accent); }
+.unlock-page { min-height: calc(100vh - 64px); display: grid; place-items: center; padding: 28px; background: #edf1ef; }
+.unlock-panel { width: min(420px, 100%); padding: 30px; }
+.unlock-panel h1 { margin: 16px 0 8px; font-size: 25px; }
+.unlock-panel .field { margin: 24px 0 12px; }
+.unlock-panel .button { width: 100%; margin-top: 8px; }
+.unlock-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 8px; background: var(--ink); color: #fff; }

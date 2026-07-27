@@ -148,7 +148,13 @@ async def update_site(
 ) -> dict:
     site = await authorized_site(slug, request, session, settings, mutation=True)
     changes = data.model_dump(exclude_unset=True)
-    display_keys = {"show_search", "show_updated_at", "show_visit_count"}
+    display_keys = {
+        "show_search",
+        "show_updated_at",
+        "show_visit_count",
+        "show_descriptions",
+        "show_tags",
+    }
     display_config = dict(site.display_config)
     for key in display_keys:
         if key in changes:

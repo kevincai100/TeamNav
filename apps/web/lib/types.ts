@@ -22,6 +22,16 @@ export type Category = {
   links: NavLink[];
 };
 
+export type LayoutConfig = {
+  accent_color: string;
+  canvas_style: "clean" | "soft" | "contrast";
+  card_style: "solid" | "outline" | "minimal";
+  content_width: "compact" | "standard" | "wide";
+  columns: 2 | 3 | 4;
+  density: "comfortable" | "compact";
+  header_alignment: "left" | "center";
+};
+
 export type Site = {
   public_slug: string;
   name: string;
@@ -30,10 +40,13 @@ export type Site = {
   theme: "light" | "dark" | "system";
   allow_indexing: boolean;
   password_protected: boolean;
+  layout_config: LayoutConfig;
   display_config: {
     show_search?: boolean;
     show_updated_at?: boolean;
     show_visit_count?: boolean;
+    show_descriptions?: boolean;
+    show_tags?: boolean;
   };
   visit_count: number;
   updated_at: string;

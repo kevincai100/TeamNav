@@ -177,11 +177,35 @@ async def test_owner_can_update_site_and_rotate_edit_key(client: AsyncClient) ->
             "theme": "dark",
             "show_visit_count": True,
             "allow_indexing": True,
+            "layout_config": {
+                "accent_color": "#2563EB",
+                "canvas_style": "soft",
+                "card_style": "outline",
+                "content_width": "wide",
+                "columns": 3,
+                "density": "compact",
+                "header_alignment": "center",
+            },
+            "show_descriptions": False,
+            "show_tags": False,
         },
     )
     assert updated.status_code == 200
     assert updated.json()["name"] == "设计团队"
     assert updated.json()["theme"] == "dark"
+    assert updated.json()["layout_config"] == {
+        "accent_color": "#2563EB",
+        "canvas_style": "soft",
+        "card_style": "outline",
+        "content_width": "wide",
+        "columns": 3,
+        "density": "compact",
+        "header_alignment": "center",
+    }
+    assert updated.json()["display_config"]["show_descriptions"] is False
+    assert updated.json()["display_config"]["show_tags"] is False
+    public_site = await client.get(f"/api/v1/public/sites/{slug}")
+    assert public_site.json()["layout_config"]["accent_color"] == "#2563EB"
     metadata = await client.get(f"/api/v1/public/sites/{slug}/metadata")
     assert metadata.json() == {"name": "设计团队", "allow_indexing": True}
 

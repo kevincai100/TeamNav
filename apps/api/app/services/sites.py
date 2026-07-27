@@ -12,6 +12,16 @@ from app.core.security import generate_slug, generate_token, hash_password, toke
 from app.models import Category, CreateAttempt, Link, Site
 from app.schemas import SiteCreate
 
+DEFAULT_LAYOUT_CONFIG = {
+    "accent_color": "#167D68",
+    "canvas_style": "soft",
+    "card_style": "solid",
+    "content_width": "standard",
+    "columns": 3,
+    "density": "comfortable",
+    "header_alignment": "left",
+}
+
 
 class SiteNotFoundError(Exception):
     pass
@@ -49,10 +59,13 @@ class SiteService:
                 hash_password(data.access_password) if data.access_password else None
             ),
             allow_indexing=not self.settings.default_noindex,
+            layout_config=dict(DEFAULT_LAYOUT_CONFIG),
             display_config={
                 "show_search": True,
                 "show_updated_at": True,
                 "show_visit_count": False,
+                "show_descriptions": True,
+                "show_tags": True,
             },
         )
         self.session.add(site)
@@ -211,7 +224,15 @@ class SiteService:
             "theme": site.theme,
             "allow_indexing": site.allow_indexing,
             "password_protected": bool(site.access_password_hash),
-            "display_config": site.display_config,
+            "layout_config": {**DEFAULT_LAYOUT_CONFIG, **site.layout_config},
+            "display_config": {
+                "show_search": True,
+                "show_updated_at": True,
+                "show_visit_count": False,
+                "show_descriptions": True,
+                "show_tags": True,
+                **site.display_config,
+            },
             "visit_count": site.visit_count,
             "updated_at": site.updated_at.isoformat(),
             "categories": categories,

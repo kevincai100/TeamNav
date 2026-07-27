@@ -1,11 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Copy, Download, ExternalLink, KeyRound, ShieldCheck } from "lucide-react";
+import {
+  Bot, BriefcaseBusiness, Check, Code2, Copy, Download, ExternalLink,
+  Headphones, KeyRound, Megaphone, PackageOpen, ShieldCheck, ShoppingBag,
+} from "lucide-react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -24,9 +27,13 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const templates = [
-  ["blank", "空白模板"], ["developer", "开发团队"], ["ecommerce", "跨境电商"],
-  ["customer-support", "客服售后"], ["operations", "运营团队"], ["ai-tools", "AI 工具集合"],
-  ["project-workspace", "项目工作台"],
+  { id: "blank", name: "空白", icon: PackageOpen },
+  { id: "developer", name: "开发团队", icon: Code2 },
+  { id: "ecommerce", name: "跨境电商", icon: ShoppingBag },
+  { id: "customer-support", name: "客服售后", icon: Headphones },
+  { id: "operations", name: "运营团队", icon: Megaphone },
+  { id: "ai-tools", name: "AI 工具", icon: Bot },
+  { id: "project-workspace", name: "项目协作", icon: BriefcaseBusiness },
 ];
 
 export default function CreatePage() {
@@ -38,6 +45,8 @@ export default function CreatePage() {
     resolver: zodResolver(schema),
     defaultValues: { name: "", description: "", icon: "🧭", template_id: "developer", theme: "light", access_password: "" },
   });
+  const selectedTemplate = useWatch({ control: form.control, name: "template_id" });
+  const selectedTheme = useWatch({ control: form.control, name: "theme" });
 
   const loadCaptcha = useCallback(async () => {
     try {
@@ -128,17 +137,30 @@ export default function CreatePage() {
 
   return (
     <main className="compact-shell create-page">
-      <span className="eyebrow">匿名创建</span>
-      <h1>建立团队导航</h1>
-      <p className="muted">选择一个模板开始，稍后可在管理页完整调整。</p>
+      <span className="eyebrow">创建工作台</span>
+      <h1>从一个清晰的入口开始。</h1>
+      <p className="muted">先确定内容骨架，创建后可以继续调整品牌色、布局和卡片样式。</p>
       <form className="panel create-form" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="panel-body form-grid">
           {captcha?.required && <div className="field span-2 captcha-field"><label htmlFor="captcha-answer">人机验证：{captcha.prompt}</label><div><input id="captcha-answer" inputMode="numeric" autoComplete="off" required value={captchaAnswer} onChange={(event) => setCaptchaAnswer(event.target.value)} /><button type="button" className="button secondary" onClick={() => void loadCaptcha()}>换一题</button></div></div>}
           <div className="field span-2"><label htmlFor="name">站点名称 *</label><input id="name" placeholder="例如：售后团队工作台" {...form.register("name")} />{form.formState.errors.name && <span className="field-error">{form.formState.errors.name.message}</span>}</div>
           <div className="field span-2"><label htmlFor="description">站点描述</label><textarea id="description" placeholder="这个导航页服务于哪些人？" {...form.register("description")} /></div>
-          <div className="field"><label htmlFor="icon">站点图标</label><input id="icon" {...form.register("icon")} /></div>
-          <div className="field"><label htmlFor="theme">页面主题</label><select id="theme" {...form.register("theme")}><option value="light">浅色</option><option value="dark">深色</option><option value="system">跟随系统</option></select></div>
-          <div className="field span-2"><label htmlFor="template">起步模板</label><select id="template" {...form.register("template_id")}>{templates.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></div>
+          <div className="field span-2 icon-field"><label htmlFor="icon">站点图标</label><input id="icon" {...form.register("icon")} /></div>
+          <fieldset className="template-picker span-2">
+            <legend>起步模板</legend>
+            <input type="hidden" {...form.register("template_id")} />
+            <div className="template-grid" role="radiogroup" aria-label="起步模板">
+              {templates.map((template) => {
+                const Icon = template.icon;
+                return <button type="button" role="radio" aria-checked={selectedTemplate === template.id} className={selectedTemplate === template.id ? "active" : ""} key={template.id} onClick={() => form.setValue("template_id", template.id)}><Icon size={18} /><span>{template.name}</span>{selectedTemplate === template.id && <Check size={14} />}</button>;
+              })}
+            </div>
+          </fieldset>
+          <fieldset className="theme-picker span-2">
+            <legend>初始主题</legend>
+            <input type="hidden" {...form.register("theme")} />
+            <div className="segmented create-theme" role="radiogroup" aria-label="初始主题"><button type="button" role="radio" aria-checked={selectedTheme === "light"} className={selectedTheme === "light" ? "active" : ""} onClick={() => form.setValue("theme", "light")}>浅色</button><button type="button" role="radio" aria-checked={selectedTheme === "dark"} className={selectedTheme === "dark" ? "active" : ""} onClick={() => form.setValue("theme", "dark")}>深色</button><button type="button" role="radio" aria-checked={selectedTheme === "system"} className={selectedTheme === "system" ? "active" : ""} onClick={() => form.setValue("theme", "system")}>跟随系统</button></div>
+          </fieldset>
           <div className="field span-2"><label htmlFor="password">访问密码（可选）</label><input id="password" type="password" autoComplete="new-password" placeholder="团队成员访问前需要输入" {...form.register("access_password")} />{form.formState.errors.access_password && <span className="field-error">{form.formState.errors.access_password.message}</span>}</div>
         </div>
         <div className="create-submit"><span>无需邮箱或账号</span><button className="button" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? "正在创建…" : "创建导航站"}</button></div>

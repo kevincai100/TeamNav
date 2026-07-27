@@ -1,8 +1,9 @@
 "use client";
 
 import {
-  BarChart3, Copy, CopyPlus, Download, Eye, FileUp, KeyRound, Link2,
-  Plus, RotateCw, Save, Settings2, Trash2, UserPlus,
+  AlignCenter, AlignLeft, BarChart3, Copy, CopyPlus, Database, Download, Eye,
+  FileUp, KeyRound, LayoutGrid, Link2, Monitor, Moon, Palette, Plus, RotateCw,
+  Save, Settings2, ShieldCheck, Sun, Trash2, UserPlus,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ import { NavigationView } from "@/components/navigation-view";
 import { SortableEditor } from "@/components/sortable-editor";
 import { API_URL, api, ApiError } from "@/lib/api";
 import { reorderItems } from "@/lib/navigation";
+import { ACCENT_PRESETS } from "@/lib/personalization";
 import type { Category, NavLink, Site } from "@/lib/types";
 
 type SessionResponse = { site: Site; csrf_token: string };
@@ -21,6 +23,7 @@ export function ManageSiteClient({ slug }: { slug: string }) {
   const [csrf, setCsrf] = useState("");
   const [status, setStatus] = useState<"loading" | "ready" | "denied">("loading");
   const [mobileView, setMobileView] = useState<"edit" | "preview">("edit");
+  const [editorTab, setEditorTab] = useState<"content" | "appearance" | "settings">("content");
   const [categoryName, setCategoryName] = useState("");
   const [categoryIcon, setCategoryIcon] = useState("📁");
   const [linkDraft, setLinkDraft] = useState({ category_id: "", name: "", url: "", description: "", icon: "🔗", tags: "" });
@@ -75,6 +78,9 @@ export function ManageSiteClient({ slug }: { slug: string }) {
         show_search: site.display_config.show_search,
         show_updated_at: site.display_config.show_updated_at,
         show_visit_count: site.display_config.show_visit_count,
+        show_descriptions: site.display_config.show_descriptions,
+        show_tags: site.display_config.show_tags,
+        layout_config: site.layout_config,
       };
       if (passwordChanged) payload.access_password = newPassword;
       const updated = await write<Site>(`/api/v1/manage/sites/${slug}`, "PATCH", payload);
@@ -206,6 +212,11 @@ export function ManageSiteClient({ slug }: { slug: string }) {
     if (!site) return; setSite({ ...site, categories: site.categories.map((category) => category.id === id ? { ...category, ...patch } : category) });
   }
 
+  function patchLayout(patch: Partial<Site["layout_config"]>) {
+    if (!site) return;
+    setSite({ ...site, layout_config: { ...site.layout_config, ...patch } });
+  }
+
   if (status === "loading") return <main className="loading"><div className="spinner" /></main>;
   if (status === "denied" || !site) return <main className="error-state"><KeyRound size={34} /><h1>无法进入管理模式</h1><p className="muted">请使用创建时保存的私密编辑链接重新打开。</p></main>;
 
@@ -221,23 +232,91 @@ export function ManageSiteClient({ slug }: { slug: string }) {
       <div className="manage-layout">
         <section className={`manage-editor ${mobileView === "preview" ? "mobile-hidden" : ""}`}>
           {!csrf && <div className="notice">当前标签页缺少写入凭证。请用私密编辑链接重新打开后再修改。</div>}
-          <details className="editor-section" open>
-            <summary><span><Settings2 size={17} /> 站点设置</span></summary>
-            <div className="editor-content form-grid">
-              <div className="field span-2"><label>名称</label><input value={site.name} onChange={(event) => setSite({ ...site, name: event.target.value })} /></div>
-              <div className="field span-2"><label>描述</label><textarea value={site.description ?? ""} onChange={(event) => setSite({ ...site, description: event.target.value })} /></div>
-              <div className="field"><label>图标</label><input value={site.icon} onChange={(event) => setSite({ ...site, icon: event.target.value })} /></div>
-              <div className="field"><label>主题</label><select value={site.theme} onChange={(event) => setSite({ ...site, theme: event.target.value as Site["theme"] })}><option value="light">浅色</option><option value="dark">深色</option><option value="system">跟随系统</option></select></div>
-              <label className="toggle-field"><input type="checkbox" checked={site.display_config.show_search !== false} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, show_search: event.target.checked } })} />显示搜索框</label>
-              <label className="toggle-field"><input type="checkbox" checked={site.display_config.show_updated_at !== false} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, show_updated_at: event.target.checked } })} />显示更新时间</label>
-              <label className="toggle-field"><input type="checkbox" checked={site.display_config.show_visit_count === true} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, show_visit_count: event.target.checked } })} />显示访问次数</label>
-              <label className="toggle-field"><input type="checkbox" checked={site.allow_indexing} onChange={(event) => setSite({ ...site, allow_indexing: event.target.checked })} />允许搜索引擎收录</label>
-              <div className="field span-2"><label>公开访问密码</label><input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setPasswordChanged(true); }} placeholder={site.password_protected ? "已启用；输入新密码可替换" : "输入至少 6 位密码以启用"} />{passwordChanged && newPassword && newPassword.length < 6 && <span className="field-error">密码至少 6 位</span>}{site.password_protected && <button type="button" className="button ghost" onClick={() => { setNewPassword(""); setPasswordChanged(true); }}>关闭访问密码</button>}</div>
-              <button className="button span-2" disabled={passwordChanged && newPassword.length > 0 && newPassword.length < 6} onClick={saveSettings}><Save size={16} /> 保存站点设置</button>
-            </div>
-          </details>
+          <nav className="editor-tabs" aria-label="编辑区域">
+            <button className={editorTab === "content" ? "active" : ""} onClick={() => setEditorTab("content")}><LayoutGrid size={16} /> 内容</button>
+            <button className={editorTab === "appearance" ? "active" : ""} onClick={() => setEditorTab("appearance")}><Palette size={16} /> 外观</button>
+            <button className={editorTab === "settings" ? "active" : ""} onClick={() => setEditorTab("settings")}><Settings2 size={16} /> 设置</button>
+          </nav>
 
-          <section className="editor-section">
+          {editorTab === "appearance" && <>
+            <section className="editor-section">
+              <div className="section-title"><span><Palette size={17} /> 品牌与外观</span><span>实时预览</span></div>
+              <div className="editor-content appearance-editor">
+                <div className="form-grid">
+                  <div className="field span-2"><label>工作台名称</label><input value={site.name} onChange={(event) => setSite({ ...site, name: event.target.value })} /></div>
+                  <div className="field span-2"><label>一句话描述</label><textarea value={site.description ?? ""} onChange={(event) => setSite({ ...site, description: event.target.value })} /></div>
+                  <div className="field"><label>标识</label><input value={site.icon} onChange={(event) => setSite({ ...site, icon: event.target.value })} /></div>
+                </div>
+
+                <fieldset className="appearance-group">
+                  <legend>明暗主题</legend>
+                  <div className="choice-grid three">
+                    <button className={site.theme === "light" ? "active" : ""} onClick={() => setSite({ ...site, theme: "light" })}><Sun size={17} /><span>浅色</span></button>
+                    <button className={site.theme === "dark" ? "active" : ""} onClick={() => setSite({ ...site, theme: "dark" })}><Moon size={17} /><span>深色</span></button>
+                    <button className={site.theme === "system" ? "active" : ""} onClick={() => setSite({ ...site, theme: "system" })}><Monitor size={17} /><span>跟随系统</span></button>
+                  </div>
+                </fieldset>
+
+                <fieldset className="appearance-group">
+                  <legend>品牌色</legend>
+                  <div className="color-row">
+                    {ACCENT_PRESETS.map((color) => <button key={color} className={`color-swatch ${site.layout_config.accent_color.toUpperCase() === color ? "active" : ""}`} style={{ backgroundColor: color }} onClick={() => patchLayout({ accent_color: color })} title={color} aria-label={`选择品牌色 ${color}`} />)}
+                    <label className="custom-color" title="自定义品牌色"><input type="color" value={site.layout_config.accent_color} onChange={(event) => patchLayout({ accent_color: event.target.value.toUpperCase() })} /><Palette size={16} /></label>
+                  </div>
+                </fieldset>
+
+                <fieldset className="appearance-group">
+                  <legend>页面背景</legend>
+                  <div className="choice-grid three">
+                    {([['clean', '纯净'], ['soft', '柔和'], ['contrast', '对比']] as const).map(([value, label]) => <button key={value} className={site.layout_config.canvas_style === value ? "active" : ""} onClick={() => patchLayout({ canvas_style: value })}><span className={`canvas-sample ${value}`} />{label}</button>)}
+                  </div>
+                </fieldset>
+
+                <fieldset className="appearance-group">
+                  <legend>卡片风格</legend>
+                  <div className="choice-grid three">
+                    {([['solid', '实体'], ['outline', '描边'], ['minimal', '极简']] as const).map(([value, label]) => <button key={value} className={site.layout_config.card_style === value ? "active" : ""} onClick={() => patchLayout({ card_style: value })}><span className={`card-sample ${value}`} />{label}</button>)}
+                  </div>
+                </fieldset>
+
+                <div className="appearance-pair">
+                  <fieldset className="appearance-group">
+                    <legend>每行卡片</legend>
+                    <div className="segmented-control">{([2, 3, 4] as const).map((columns) => <button key={columns} className={site.layout_config.columns === columns ? "active" : ""} onClick={() => patchLayout({ columns })}>{columns}</button>)}</div>
+                  </fieldset>
+                  <fieldset className="appearance-group">
+                    <legend>内容密度</legend>
+                    <div className="segmented-control"><button className={site.layout_config.density === "comfortable" ? "active" : ""} onClick={() => patchLayout({ density: "comfortable" })}>舒适</button><button className={site.layout_config.density === "compact" ? "active" : ""} onClick={() => patchLayout({ density: "compact" })}>紧凑</button></div>
+                  </fieldset>
+                </div>
+
+                <div className="appearance-pair">
+                  <fieldset className="appearance-group">
+                    <legend>内容宽度</legend>
+                    <div className="segmented-control">{([['compact', '窄'], ['standard', '标准'], ['wide', '宽']] as const).map(([value, label]) => <button key={value} className={site.layout_config.content_width === value ? "active" : ""} onClick={() => patchLayout({ content_width: value })}>{label}</button>)}</div>
+                  </fieldset>
+                  <fieldset className="appearance-group">
+                    <legend>标题对齐</legend>
+                    <div className="segmented-control icon-segments"><button className={site.layout_config.header_alignment === "left" ? "active" : ""} onClick={() => patchLayout({ header_alignment: "left" })} title="左对齐"><AlignLeft size={16} /></button><button className={site.layout_config.header_alignment === "center" ? "active" : ""} onClick={() => patchLayout({ header_alignment: "center" })} title="居中"><AlignCenter size={16} /></button></div>
+                  </fieldset>
+                </div>
+
+                <fieldset className="appearance-group">
+                  <legend>页面内容</legend>
+                  <div className="toggle-list">
+                    <label className="toggle-field"><input type="checkbox" checked={site.display_config.show_search !== false} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, show_search: event.target.checked } })} /><span>搜索框</span></label>
+                    <label className="toggle-field"><input type="checkbox" checked={site.display_config.show_descriptions !== false} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, show_descriptions: event.target.checked } })} /><span>链接描述</span></label>
+                    <label className="toggle-field"><input type="checkbox" checked={site.display_config.show_tags !== false} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, show_tags: event.target.checked } })} /><span>链接标签</span></label>
+                    <label className="toggle-field"><input type="checkbox" checked={site.display_config.show_updated_at !== false} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, show_updated_at: event.target.checked } })} /><span>更新时间</span></label>
+                    <label className="toggle-field"><input type="checkbox" checked={site.display_config.show_visit_count === true} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, show_visit_count: event.target.checked } })} /><span>访问次数</span></label>
+                  </div>
+                </fieldset>
+                <button className="button editor-save" onClick={saveSettings}><Save size={16} /> 保存并发布外观</button>
+              </div>
+            </section>
+          </>}
+
+          {editorTab === "content" && <><section className="editor-section">
             <div className="section-title"><span><Settings2 size={17} /> 分类与链接</span><span>{site.categories.length} 个分类</span></div>
             <div className="editor-content">
               <form className="quick-add" onSubmit={addCategory}><input aria-label="分类图标" value={categoryIcon} onChange={(event) => setCategoryIcon(event.target.value)} /><input aria-label="分类名称" placeholder="新分类名称" required value={categoryName} onChange={(event) => setCategoryName(event.target.value)} /><button className="icon-button" title="添加分类"><Plus size={17} /></button></form>
@@ -267,6 +346,16 @@ export function ManageSiteClient({ slug }: { slug: string }) {
               <div className="data-actions"><button className="button secondary" onClick={exportBookmarks}><Download size={16} /> 导出浏览器书签</button><label className="button secondary"><FileUp size={16} /> 导入书签<input type="file" accept="text/html,.html" hidden onChange={(event) => event.target.files?.[0] && void importBookmarks(event.target.files[0])} /></label></div>
             </div>
           </details>
+          </>}
+
+          {editorTab === "settings" && <><section className="editor-section">
+            <div className="section-title"><span><ShieldCheck size={17} /> 访问与收录</span></div>
+            <div className="editor-content form-stack">
+              <label className="toggle-field"><input type="checkbox" checked={site.allow_indexing} onChange={(event) => setSite({ ...site, allow_indexing: event.target.checked })} /><span>允许搜索引擎收录</span></label>
+              <div className="field"><label>公开访问密码</label><input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setPasswordChanged(true); }} placeholder={site.password_protected ? "已启用；输入新密码可替换" : "输入至少 6 位密码以启用"} />{passwordChanged && newPassword && newPassword.length < 6 && <span className="field-error">密码至少 6 位</span>}{site.password_protected && <button type="button" className="button ghost" onClick={() => { setNewPassword(""); setPasswordChanged(true); }}>关闭访问密码</button>}</div>
+              <button className="button" disabled={passwordChanged && newPassword.length > 0 && newPassword.length < 6} onClick={saveSettings}><Save size={16} /> 保存访问设置</button>
+            </div>
+          </section>
 
           <details className="editor-section" open>
             <summary><span><BarChart3 size={17} /> 基础统计</span></summary>
@@ -274,9 +363,10 @@ export function ManageSiteClient({ slug }: { slug: string }) {
           </details>
 
           <details className="editor-section danger-zone">
-            <summary><span><KeyRound size={17} /> 安全与删除</span></summary>
+            <summary><span><Database size={17} /> 工作台与数据</span></summary>
             <div className="editor-content form-stack"><button className="button secondary" onClick={claimToAccount}><UserPlus size={16} /> 同步到个人账号</button><button className="button secondary" onClick={cloneSite}><CopyPlus size={16} /> 克隆站点</button><button className="button secondary" onClick={rotateKey}><RotateCw size={16} /> 轮换私密编辑链接</button><button className="button danger" onClick={deleteSite}><Trash2 size={16} /> 删除这个站点</button></div>
           </details>
+          </>}
         </section>
 
         <aside className={`manage-preview ${mobileView === "edit" ? "mobile-hidden-preview" : ""}`}><div className="preview-label"><Eye size={15} /> 实时预览</div><NavigationView site={site} preview /></aside>

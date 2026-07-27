@@ -1,2 +1,33 @@
-.account-auth { max-width: 520px; }.auth-heading { margin-bottom: 22px; }.auth-heading h1 { margin: 14px 0 8px; font-size: 34px; }.segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 12px; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }.segmented button { height: 38px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); }.segmented button.active { background: var(--surface-soft); color: var(--ink); font-weight: 700; }.field-hint { font-size: 11px; }.account-page { width: min(980px, calc(100% - 40px)); margin: 0 auto; padding: 38px 0 70px; }.account-title { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 28px; }.account-title h1 { margin: 7px 0 0; font-size: 34px; }.account-title > div:last-child { display: flex; gap: 8px; }.account-sites { border-top: 1px solid var(--line); }.account-site { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--line); }.account-site-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 7px; background: var(--accent); color: #fff; }.account-site h2 { margin: 0 0 4px; font-size: 17px; }.account-site p { margin: 0 0 5px; color: var(--muted); font-size: 13px; }.account-site small { color: var(--muted); }.account-site-actions { display: flex; gap: 7px; }.account-empty { padding: 60px 0; border-top: 1px solid var(--line); text-align: center; }.account-empty h2 { font-size: 21px; }
-@media (max-width: 600px) { .account-page { width: calc(100% - 24px); padding-top: 24px; }.account-title { align-items: flex-start; }.account-title h1 { font-size: 28px; }.account-title .button { width: 42px; padding: 0; font-size: 0; }.account-site { grid-template-columns: 42px 1fr; }.account-site-actions { grid-column: 2; } }
+.account-auth { width: min(500px, calc(100% - 32px)); padding-top: 58px; }
+.auth-heading { margin-bottom: 24px; text-align: center; }
+.auth-heading > svg { width: 48px; height: 48px; margin-bottom: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--accent); box-shadow: var(--shadow-soft); }
+.auth-heading h1 { margin: 0 0 8px; font-size: 32px; }
+.auth-heading p { max-width: 400px; margin: 0 auto; line-height: 1.65; }
+.segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 12px; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.segmented button { height: 38px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); }
+.segmented button.active { background: var(--surface-soft); color: var(--ink); font-weight: 700; }
+.field-hint { font-size: 11px; }
+.account-page { width: min(1040px, calc(100% - 40px)); margin: 0 auto; padding: 38px 0 70px; }
+.account-title { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 28px; }
+.account-title h1 { margin: 7px 0 0; font-size: 34px; }
+.account-title > div:last-child { display: flex; gap: 8px; }
+.account-sites { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.account-site { min-width: 0; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-soft); }
+.account-site:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
+.account-site-icon { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 7px; background: var(--accent); color: #fff; }
+.account-site > div:nth-child(2) { min-width: 0; }
+.account-site h2 { overflow: hidden; margin: 0 0 4px; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.account-site p { overflow: hidden; margin: 0 0 6px; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.account-site small { color: var(--muted); font-size: 11px; }
+.account-site-actions { display: flex; gap: 7px; }
+.account-empty { padding: 64px 0; border-top: 1px solid var(--line); text-align: center; }
+.account-empty h2 { font-size: 21px; }
+@media (max-width: 760px) { .account-sites { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  .account-page { width: calc(100% - 24px); padding-top: 24px; }
+  .account-title { align-items: flex-start; }
+  .account-title h1 { font-size: 28px; }
+  .account-title .button { width: 42px; padding: 0; font-size: 0; }
+  .account-site { grid-template-columns: 42px 1fr; }
+  .account-site-actions { grid-column: 2; }
+}

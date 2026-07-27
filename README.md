@@ -8,6 +8,7 @@ TeamNav is a self-hosted, shareable navigation homepage for individuals and team
 - Separate public and management capability links, QR sharing and downloadable recovery files
 - Optional email accounts with workspace ownership, existing-site claiming and cross-device management
 - Responsive public navigation with local search, category filters, favicons, click tracking and copy actions
+- Workspace-level personalization for brand color, light/dark mode, canvas, card style, width, columns, density and content visibility
 - HttpOnly management sessions with CSRF protection
 - Site, category and link editing, drag-and-drop ordering, optional batch tags and live preview
 - Edit-key rotation, JSON/browser-bookmark import/export, cloning and basic daily statistics
