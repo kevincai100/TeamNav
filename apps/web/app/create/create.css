@@ -1,6 +1,7 @@
 .create-page > h1, .create-result > h1 { margin: 12px 0 12px; font-size: 38px; }
 .create-page > .muted { margin-bottom: 26px; }
 .create-form { margin-top: 28px; }
+.captcha-field > div { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .create-submit { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-top: 1px solid var(--line); background: var(--surface-soft); }
 .create-submit span { color: var(--muted); font-size: 12px; }
 .success-mark { width: 52px; height: 52px; display: grid; place-items: center; margin-bottom: 22px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); }

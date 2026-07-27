@@ -30,12 +30,15 @@ class SiteService:
         self.session = session
         self.settings = settings
 
-    async def create(self, data: SiteCreate, creator_ip: str) -> dict[str, Any]:
+    async def create(
+        self, data: SiteCreate, creator_ip: str, owner_id: str | None = None
+    ) -> dict[str, Any]:
         ip_hash = token_digest(creator_ip, self.settings.secret_key)
         await self._check_rate_limit(ip_hash)
         template = self._load_template(data.template_id)
         edit_key = generate_token()
         site = Site(
+            owner_id=owner_id,
             public_slug=generate_slug(),
             name=data.name,
             description=data.description,
@@ -64,6 +67,61 @@ class SiteService:
             "site": {"public_slug": site.public_slug, "name": site.name},
             "public_url": public_url,
             "manage_url": manage_url,
+            "recovery_payload": {
+                "version": 1,
+                "public_slug": site.public_slug,
+                "edit_key": edit_key,
+            },
+        }
+
+    async def clone(self, source: Site, name: str | None = None) -> dict[str, Any]:
+        edit_key = generate_token()
+        site = Site(
+            public_slug=generate_slug(),
+            name=name or f"{source.name} copy",
+            description=source.description,
+            icon=source.icon,
+            theme=source.theme,
+            layout_config=dict(source.layout_config),
+            display_config=dict(source.display_config),
+            edit_key_hash=token_digest(edit_key, self.settings.secret_key),
+            access_password_hash=source.access_password_hash,
+            password_version=source.password_version,
+            allow_indexing=source.allow_indexing,
+        )
+        self.session.add(site)
+        await self.session.flush()
+        for category in sorted(source.categories, key=lambda item: item.sort_order):
+            cloned_category = Category(
+                site=site,
+                name=category.name,
+                description=category.description,
+                icon=category.icon,
+                sort_order=category.sort_order,
+                is_visible=category.is_visible,
+            )
+            self.session.add(cloned_category)
+            for link in sorted(category.links, key=lambda item: item.sort_order):
+                self.session.add(
+                    Link(
+                        site_id=site.id,
+                        category=cloned_category,
+                        name=link.name,
+                        url=link.url,
+                        description=link.description,
+                        icon=link.icon,
+                        tags=list(link.tags),
+                        sort_order=link.sort_order,
+                        is_pinned=link.is_pinned,
+                        is_enabled=link.is_enabled,
+                        open_mode=link.open_mode,
+                    )
+                )
+        await self.session.commit()
+        return {
+            "site": {"public_slug": site.public_slug, "name": site.name},
+            "public_url": f"{self.settings.app_url}/s/{site.public_slug}",
+            "manage_url": f"{self.settings.app_url}/manage/{site.public_slug}?key={edit_key}",
             "recovery_payload": {
                 "version": 1,
                 "public_slug": site.public_slug,

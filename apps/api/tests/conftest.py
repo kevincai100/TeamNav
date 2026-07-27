@@ -15,6 +15,26 @@ async def client(tmp_path) -> AsyncIterator[AsyncClient]:
         app_url="http://test-web",
         secret_key="test-secret-key-with-at-least-32-characters",
         cookie_secure=False,
+        admin_token="test-admin-token-with-at-least-32-characters",
+        captcha_required=False,
+    )
+    database = create_database(settings.database_url)
+    await init_models(database.engine)
+    app = create_app(settings=settings, database=database)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
+        yield http
+    await database.engine.dispose()
+
+
+@pytest.fixture
+async def captcha_client(tmp_path) -> AsyncIterator[AsyncClient]:
+    settings = Settings(
+        database_url=f"sqlite+aiosqlite:///{tmp_path / 'captcha.db'}",
+        app_url="http://test-web",
+        secret_key="test-secret-key-with-at-least-32-characters",
+        cookie_secure=False,
+        captcha_required=True,
+        captcha_expose_test_answer=True,
     )
     database = create_database(settings.database_url)
     await init_models(database.engine)

@@ -7,6 +7,8 @@
     "build": "npm run build --workspace @teamnav/web",
     "lint": "npm run lint --workspace @teamnav/web",
     "typecheck": "npm run typecheck --workspace @teamnav/web",
-    "test": "npm run test --workspace @teamnav/web"
+    "test": "npm run test --workspace @teamnav/web",
+    "e2e": "playwright test",
+    "preview:local": "node scripts/start-local-preview.mjs"
   }
 }

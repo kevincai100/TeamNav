@@ -3,6 +3,8 @@
 @import "./create/create.css";
 @import "./s/public.css";
 @import "./manage/manage.css";
+@import "./admin/admin.css";
+@import "./account/account.css";
 
 :root {
   --canvas: #f5f7f8;

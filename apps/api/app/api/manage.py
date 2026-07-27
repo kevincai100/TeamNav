@@ -1,18 +1,21 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from sqlalchemy import delete
+from fastapi.responses import PlainTextResponse
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import settings_from_request
 from app.api.sites import get_session
 from app.core.config import Settings
 from app.core.security import generate_token, hash_password, token_digest
-from app.models import AccessSession, Category
+from app.models import AccessSession, Category, Site
 from app.schemas import (
     BatchLinks,
+    BookmarkImport,
     CategoryCreate,
     CategoryUpdate,
+    CloneSite,
     DeleteSite,
     ImportRequest,
     LinkCreate,
@@ -21,7 +24,13 @@ from app.schemas import (
     SessionCreate,
     SiteUpdate,
 )
+from app.services.account_auth import (
+    AccountAuth,
+    AccountAuthenticationError,
+    AccountAuthorizationError,
+)
 from app.services.auth import AuthenticationError, AuthorizationError, ManageAuth
+from app.services.bookmarks import BookmarkCodec
 from app.services.manage import (
     ResourceNotFoundError,
     SiteLimitError,
@@ -29,6 +38,7 @@ from app.services.manage import (
     category_payload,
     link_payload,
 )
+from app.services.metrics import MetricsRecorder
 from app.services.sites import SiteDisabledError, SiteNotFoundError, SiteService
 
 router = APIRouter(prefix="/api/v1/manage/sites")
@@ -43,16 +53,42 @@ async def authorized_site(
     mutation: bool,
 ):
     auth = ManageAuth(session, settings)
+    manage_authenticated = False
     try:
-        site, manage_session = await auth.authenticate(
-            slug, request.cookies.get("teamnav_manage")
-        )
-        if mutation:
+        site, manage_session = await auth.authenticate(slug, request.cookies.get("teamnav_manage"))
+        manage_authenticated = True
+    except AuthenticationError:
+        pass
+    else:
+        if not mutation:
+            return site
+        try:
             auth.check_csrf(manage_session, request.headers.get("X-CSRF-Token"))
+            return site
+        except AuthorizationError:
+            pass
+
+    try:
+        account = AccountAuth(session, settings)
+        user, user_session = await account.authenticate(request.cookies.get("teamnav_account"))
+        site = await session.scalar(
+            select(Site).where(
+                Site.public_slug == slug,
+                Site.owner_id == user.id,
+                Site.deleted_at.is_(None),
+                Site.is_disabled.is_(False),
+            )
+        )
+        if site is None:
+            raise AccountAuthenticationError
+        if mutation:
+            account.check_csrf(user_session, request.headers.get("X-CSRF-Token"))
         return site
-    except AuthenticationError as error:
-        raise HTTPException(status_code=401, detail={"code": "MANAGE_SESSION_REQUIRED"}) from error
-    except AuthorizationError as error:
+    except AccountAuthenticationError as error:
+        code = "CSRF_FAILED" if manage_authenticated else "MANAGE_SESSION_REQUIRED"
+        status_code = 403 if manage_authenticated else 401
+        raise HTTPException(status_code=status_code, detail={"code": code}) from error
+    except AccountAuthorizationError as error:
         raise HTTPException(status_code=403, detail={"code": "CSRF_FAILED"}) from error
 
 
@@ -303,6 +339,101 @@ async def export_site(
     payload.pop("visit_count", None)
     payload.pop("public_slug", None)
     return payload
+
+
+@router.get("/{slug}/bookmarks/export", response_class=PlainTextResponse)
+async def export_bookmarks(
+    slug: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> PlainTextResponse:
+    site = await authorized_site(slug, request, session, settings, mutation=False)
+    loaded = await SiteService(session, settings).get_site(site.public_slug)
+    return PlainTextResponse(
+        BookmarkCodec.export(loaded.name, loaded.categories),
+        media_type="text/html; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="teamnav-{slug}-bookmarks.html"'},
+    )
+
+
+@router.post("/{slug}/bookmarks/import")
+async def import_bookmarks(
+    slug: str,
+    data: BookmarkImport,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict[str, int]:
+    site = await authorized_site(slug, request, session, settings, mutation=True)
+    if data.mode == "replace":
+        await session.execute(delete(Category).where(Category.site_id == site.id))
+        await session.flush()
+    manager = SiteManager(session, settings, site)
+    imported_categories = 0
+    imported_links = 0
+    for category_data in BookmarkCodec.parse(data.html):
+        category = await manager.create_category(CategoryCreate(name=category_data.name))
+        imported_categories += 1
+        for link_data in category_data.links:
+            await manager.create_link(
+                LinkCreate(
+                    category_id=category.id,
+                    name=link_data.name,
+                    url=link_data.url,
+                    tags=link_data.tags,
+                )
+            )
+            imported_links += 1
+    return {
+        "imported_categories": imported_categories,
+        "imported_links": imported_links,
+    }
+
+
+@router.post("/{slug}/clone", status_code=201)
+async def clone_site(
+    slug: str,
+    data: CloneSite,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict:
+    site = await authorized_site(slug, request, session, settings, mutation=True)
+    loaded = await SiteService(session, settings).get_site(site.public_slug)
+    return await SiteService(session, settings).clone(loaded, data.name)
+
+
+@router.post("/{slug}/claim")
+async def claim_site(
+    slug: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict:
+    site = await authorized_site(slug, request, session, settings, mutation=True)
+    try:
+        user, _ = await AccountAuth(session, settings).authenticate(
+            request.cookies.get("teamnav_account")
+        )
+    except AccountAuthenticationError as error:
+        raise HTTPException(status_code=401, detail={"code": "ACCOUNT_SESSION_REQUIRED"}) from error
+    if site.owner_id and site.owner_id != user.id:
+        raise HTTPException(status_code=409, detail={"code": "SITE_ALREADY_OWNED"})
+    site.owner_id = user.id
+    await session.commit()
+    return {"public_slug": site.public_slug, "owner_email": user.email}
+
+
+@router.get("/{slug}/stats")
+async def site_stats(
+    slug: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict:
+    site = await authorized_site(slug, request, session, settings, mutation=False)
+    return await MetricsRecorder(session).report(site.id)
 
 
 @router.post("/{slug}/import")

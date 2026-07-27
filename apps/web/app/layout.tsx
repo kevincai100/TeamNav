@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_SC } from "next/font/google";
 import Link from "next/link";
-import { Compass, Github } from "lucide-react";
+import { Compass, Github, UserRound } from "lucide-react";
 import { Toaster } from "sonner";
 
 import "./globals.css";
@@ -26,6 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </Link>
           <nav aria-label="主导航">
             <Link href="/create">创建导航</Link>
+            <Link href="/account" aria-label="个人账号" title="个人账号"><UserRound size={18} /></Link>
             <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
               <Github size={18} />
             </a>

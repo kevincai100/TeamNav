@@ -54,10 +54,7 @@ class SiteManager:
         await self.session.commit()
 
     async def reorder_categories(self, items: list[ReorderItem]) -> None:
-        categories = {
-            item.id: await self._category(item.id)
-            for item in items
-        }
+        categories = {item.id: await self._category(item.id) for item in items}
         for item in items:
             categories[item.id].sort_order = item.sort_order
         await self.session.commit()
@@ -116,6 +113,11 @@ class SiteManager:
                         name=parts[0],
                         url=parts[1],
                         description=parts[2] if len(parts) > 2 else None,
+                        tags=(
+                            [tag.strip() for tag in parts[3].split(",") if tag.strip()][:10]
+                            if len(parts) > 3
+                            else []
+                        ),
                     )
                 )
             )
@@ -123,9 +125,7 @@ class SiteManager:
 
     async def _category(self, category_id: str) -> Category:
         category = await self.session.scalar(
-            select(Category).where(
-                Category.id == category_id, Category.site_id == self.site.id
-            )
+            select(Category).where(Category.id == category_id, Category.site_id == self.site.id)
         )
         if category is None:
             raise ResourceNotFoundError("CATEGORY_NOT_FOUND")

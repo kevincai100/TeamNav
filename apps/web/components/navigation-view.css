@@ -28,6 +28,7 @@
 .link-card:hover { transform: translateY(-2px); border-color: #b8c7c2; box-shadow: var(--shadow); }
 .link-card > a { min-height: 98px; display: grid; grid-template-columns: 44px minmax(0, 1fr) 18px; align-items: center; gap: 12px; padding: 16px 42px 16px 16px; }
 .link-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 7px; background: var(--surface-soft); color: var(--accent); font-size: 13px; font-weight: 800; }
+.link-icon img { width: 24px; height: 24px; object-fit: contain; }
 .link-content { display: grid; min-width: 0; gap: 4px; }
 .link-name { display: flex; align-items: center; gap: 6px; font-weight: 730; }
 .link-description, .link-tags { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }

@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.api.account import router as account_router
+from app.api.admin import router as admin_router
 from app.api.manage import router as manage_router
 from app.api.sites import router as sites_router
 from app.core.config import Settings, get_settings
@@ -55,6 +57,8 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
 
     app.include_router(sites_router)
     app.include_router(manage_router)
+    app.include_router(admin_router)
+    app.include_router(account_router)
     return app
 
 

@@ -1,14 +1,16 @@
 # Security model
 
 - Edit keys and session tokens are generated from 32 bytes of cryptographic randomness and persisted only as keyed SHA-256 digests.
-- Public access passwords use bcrypt. Changing a password invalidates previous public access sessions.
-- Management mutations require an HttpOnly, SameSite cookie and a session-bound CSRF token.
+- Public access passwords and account passwords use bcrypt. Changing a public password invalidates previous access sessions.
+- Management and account mutations require HttpOnly, SameSite cookies and session-bound CSRF tokens.
+- Site creation uses an expiring signed CAPTCHA challenge when `CAPTCHA_REQUIRED=true`.
+- Admin moderation requires a separately configured token exchanged for a short-lived HttpOnly session.
 - User links accept only `http`, `https`, `mailto`, and `tel`. The API does not fetch arbitrary favicons, avoiding an SSRF surface.
 - Text fields are rendered as React text, never as user-provided HTML. External links use `noopener noreferrer`.
 - Creation and reports store keyed IP digests rather than raw IP addresses.
 - Public pages default to `noindex, nofollow`.
 
-Production requires TLS, `COOKIE_SECURE=true`, a unique strong `SECRET_KEY`, trusted proxy configuration at the reverse proxy, rate limits appropriate to the deployment, log redaction for query strings, and routine dependency updates.
+Production requires TLS, `COOKIE_SECURE=true`, unique strong `SECRET_KEY` and `ADMIN_TOKEN` values, trusted proxy configuration at the reverse proxy, rate limits appropriate to the deployment, log redaction for query strings, and routine dependency updates.
 
 ## Current dependency advisory
 

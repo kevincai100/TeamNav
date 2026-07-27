@@ -1,15 +1,19 @@
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import database_from_request, settings_from_request
 from app.core.config import Settings
 from app.core.security import token_digest
 from app.db import Database, session_dependency
-from app.models import AbuseReport
+from app.models import AbuseReport, Category, Link
 from app.schemas import PasswordUnlock, ReportCreate, SiteCreate
+from app.services.account_auth import AccountAuth
 from app.services.auth import AccessAuth, AuthenticationError
+from app.services.captcha import CaptchaError, CaptchaVerifier
+from app.services.metrics import MetricsRecorder
 from app.services.sites import RateLimitError, SiteDisabledError, SiteNotFoundError, SiteService
 
 router = APIRouter(prefix="/api/v1")
@@ -22,6 +26,13 @@ async def get_session(
         yield session
 
 
+@router.get("/captcha/challenge")
+async def captcha_challenge(
+    settings: Settings = Depends(settings_from_request),
+) -> dict:
+    return CaptchaVerifier(settings).challenge()
+
+
 @router.post("/sites", status_code=status.HTTP_201_CREATED)
 async def create_site(
     data: SiteCreate,
@@ -30,8 +41,16 @@ async def create_site(
     settings: Settings = Depends(settings_from_request),
 ) -> dict:
     try:
+        CaptchaVerifier(settings).verify(data.captcha_token, data.captcha_answer)
         creator_ip = request.client.host if request.client else "unknown"
-        return await SiteService(session, settings).create(data, creator_ip)
+        owner = await AccountAuth(session, settings).authenticate_optional(
+            request.cookies.get("teamnav_account")
+        )
+        return await SiteService(session, settings).create(
+            data, creator_ip, owner.id if owner else None
+        )
+    except CaptchaError as error:
+        raise HTTPException(status_code=422, detail={"code": str(error)}) from error
     except RateLimitError as error:
         raise HTTPException(
             status_code=429,
@@ -61,8 +80,43 @@ async def public_site(
     ):
         raise HTTPException(status_code=401, detail={"code": "PASSWORD_REQUIRED"})
     site.visit_count += 1
+    await MetricsRecorder(session).increment(site.id, "page_views")
     await session.commit()
     return service.serialize(site, public=True)
+
+
+@router.post("/public/sites/{slug}/links/{link_id}/click", status_code=204)
+async def track_link_click(
+    slug: str,
+    link_id: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> None:
+    try:
+        site = await SiteService(session, settings).get_site(slug)
+    except SiteNotFoundError as error:
+        raise HTTPException(status_code=404, detail={"code": "SITE_NOT_FOUND"}) from error
+    except SiteDisabledError as error:
+        raise HTTPException(status_code=410, detail={"code": "SITE_DISABLED"}) from error
+    if not await AccessAuth(session, settings).is_authorized(
+        site, request.cookies.get("teamnav_access")
+    ):
+        raise HTTPException(status_code=401, detail={"code": "PASSWORD_REQUIRED"})
+    link = await session.scalar(
+        select(Link)
+        .join(Category)
+        .where(
+            Link.id == link_id,
+            Link.site_id == site.id,
+            Link.is_enabled.is_(True),
+            Category.is_visible.is_(True),
+        )
+    )
+    if link is None:
+        raise HTTPException(status_code=404, detail={"code": "LINK_NOT_FOUND"})
+    await MetricsRecorder(session).increment(site.id, "link_clicks")
+    await session.commit()
 
 
 @router.get("/public/sites/{slug}/metadata")

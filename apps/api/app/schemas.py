@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class SiteCreate(BaseModel):
@@ -10,6 +10,8 @@ class SiteCreate(BaseModel):
     template_id: str = "blank"
     theme: Literal["light", "dark", "system"] = "light"
     access_password: str | None = Field(default=None, min_length=6, max_length=128)
+    captcha_token: str | None = Field(default=None, max_length=2048)
+    captcha_answer: str | None = Field(default=None, max_length=16)
 
 
 class SessionCreate(BaseModel):
@@ -119,3 +121,29 @@ class DeleteSite(BaseModel):
 class ReportCreate(BaseModel):
     reason: Literal["spam", "phishing", "illegal", "other"]
     description: str | None = Field(default=None, max_length=500)
+
+
+class AdminSessionCreate(BaseModel):
+    token: str = Field(min_length=16, max_length=512)
+
+
+class AdminSiteUpdate(BaseModel):
+    is_disabled: bool
+
+
+class ReportUpdate(BaseModel):
+    status: Literal["open", "resolved", "dismissed"]
+
+
+class BookmarkImport(BaseModel):
+    mode: Literal["replace", "merge"] = "merge"
+    html: str = Field(min_length=1, max_length=5_000_000)
+
+
+class CloneSite(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+
+
+class AccountCredentials(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=10, max_length=128)

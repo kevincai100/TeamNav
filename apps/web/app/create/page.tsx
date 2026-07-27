@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Copy, Download, ExternalLink, KeyRound, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -32,21 +32,43 @@ const templates = [
 export default function CreatePage() {
   const [result, setResult] = useState<CreateResult | null>(null);
   const [saved, setSaved] = useState(false);
+  const [captcha, setCaptcha] = useState<{ required: boolean; prompt: string; token: string } | null>(null);
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", description: "", icon: "🧭", template_id: "developer", theme: "light", access_password: "" },
   });
 
+  const loadCaptcha = useCallback(async () => {
+    try {
+      setCaptcha(await api("/api/v1/captcha/challenge"));
+      setCaptchaAnswer("");
+    } catch {
+      setCaptcha(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadCaptcha(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadCaptcha]);
+
   async function onSubmit(values: FormValues) {
     try {
       const created = await api<CreateResult>("/api/v1/sites", {
         method: "POST",
-        body: JSON.stringify({ ...values, access_password: values.access_password || null }),
+        body: JSON.stringify({
+          ...values,
+          access_password: values.access_password || null,
+          captcha_token: captcha?.token,
+          captcha_answer: captchaAnswer,
+        }),
       });
       sessionStorage.setItem("teamnav_last_created", JSON.stringify(created));
       setResult(created);
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "REQUEST_FAILED";
+      if (code.startsWith("CAPTCHA_")) await loadCaptcha();
       toast.error(code === "CREATE_RATE_LIMITED" ? "创建过于频繁，请稍后再试" : "创建失败，请检查 API 服务");
     }
   }
@@ -97,7 +119,7 @@ export default function CreatePage() {
 
         <label className="save-confirm"><input type="checkbox" checked={saved} onChange={(event) => setSaved(event.target.checked)} /><span><ShieldCheck size={18} /> 我已经保存私密编辑链接或恢复文件</span></label>
         <div className="result-actions">
-          <Link className={`button ${!saved ? "disabled-link" : ""}`} aria-disabled={!saved} tabIndex={saved ? 0 : -1} href={saved ? result.manage_url : "#"}>进入管理页 <ExternalLink size={16} /></Link>
+          <Link data-testid="manage-link" className={`button ${!saved ? "disabled-link" : ""}`} aria-disabled={!saved} tabIndex={saved ? 0 : -1} href={saved ? result.manage_url : "#"}>进入管理页 <ExternalLink size={16} /></Link>
           <Link className="button secondary" href={`/s/${result.site.public_slug}`}>查看公开页</Link>
         </div>
       </main>
@@ -111,6 +133,7 @@ export default function CreatePage() {
       <p className="muted">选择一个模板开始，稍后可在管理页完整调整。</p>
       <form className="panel create-form" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="panel-body form-grid">
+          {captcha?.required && <div className="field span-2 captcha-field"><label htmlFor="captcha-answer">人机验证：{captcha.prompt}</label><div><input id="captcha-answer" inputMode="numeric" autoComplete="off" required value={captchaAnswer} onChange={(event) => setCaptchaAnswer(event.target.value)} /><button type="button" className="button secondary" onClick={() => void loadCaptcha()}>换一题</button></div></div>}
           <div className="field span-2"><label htmlFor="name">站点名称 *</label><input id="name" placeholder="例如：售后团队工作台" {...form.register("name")} />{form.formState.errors.name && <span className="field-error">{form.formState.errors.name.message}</span>}</div>
           <div className="field span-2"><label htmlFor="description">站点描述</label><textarea id="description" placeholder="这个导航页服务于哪些人？" {...form.register("description")} /></div>
           <div className="field"><label htmlFor="icon">站点图标</label><input id="icon" {...form.register("icon")} /></div>

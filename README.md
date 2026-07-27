@@ -1,17 +1,18 @@
 # TeamNav
 
-TeamNav is an anonymous, shareable navigation homepage for teams. Creating a site produces a read-only public link and a separate unguessable management link. No account is required.
+TeamNav is a self-hosted, shareable navigation homepage for individuals and teams. Creating a site produces a public link and a separate unguessable management link. Accounts are optional and can synchronize multiple workspaces.
 
 ## Features
 
-- Anonymous site creation with seven built-in templates, light/dark themes and optional access passwords
+- Anonymous or account-based site creation with seven templates, light/dark themes and optional public access passwords
 - Separate public and management capability links, QR sharing and downloadable recovery files
-- Responsive public navigation with local search, category filters, pinned links and copy actions
+- Optional email accounts with workspace ownership, existing-site claiming and cross-device management
+- Responsive public navigation with local search, category filters, favicons, click tracking and copy actions
 - HttpOnly management sessions with CSRF protection
-- Site, category and link editing, ordering, batch link creation and live preview
-- Edit-key rotation, JSON import/export, confirmed deletion and abuse reporting
-- Database-backed IP rate limiting, protocol allowlisting and secure default `noindex`
-- PostgreSQL deployment with Alembic migrations and Docker Compose
+- Site, category and link editing, drag-and-drop ordering, optional batch tags and live preview
+- Edit-key rotation, JSON/browser-bookmark import/export, cloning and basic daily statistics
+- CAPTCHA, abuse reporting, admin report processing and site blocking
+- SQLite, PostgreSQL or MySQL deployment with automatic Alembic migrations and Docker Compose
 
 ## Repository
 
@@ -48,11 +49,27 @@ Open `http://localhost:3000`. The web app expects the API at `http://localhost:8
 
 ## Docker deployment
 
-Create `.env` from `.env.example`, set unique values for `SECRET_KEY` and `POSTGRES_PASSWORD`, then run:
+Create `.env` from `.env.example` and set unique values for `SECRET_KEY` and `ADMIN_TOKEN`.
+
+Lightweight SQLite, suitable for one application instance:
 
 ```bash
 docker compose up -d --build
 ```
+
+Bundled PostgreSQL, recommended for production:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
+```
+
+Bundled MySQL:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --build
+```
+
+To use an external PostgreSQL or MySQL server, set `DATABASE_URL` in `.env` and use the lightweight base command; the SQLite volume remains mounted but is unused. Examples are provided in `.env.example`. Database tables are migrated automatically whenever the API container starts.
 
 For internet deployments, use TLS, set the public URLs and CORS origin, and set `COOKIE_SECURE=true`. Detailed upgrade, backup and restore steps are in [operations](docs/operations.md).
 
@@ -63,6 +80,7 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run e2e
 
 cd apps/api
 ../../.venv/Scripts/python -m pytest -q
@@ -71,4 +89,4 @@ cd apps/api
 
 ## MVP scope notes
 
-The core anonymous create, share, maintain, protect, report, import/export and self-host flows are implemented. Account login, organizations, simultaneous editing, SSO, subscriptions, custom domains, automatic favicon fetching and a cloud-operator admin console remain intentionally outside this anonymous MVP.
+The current MVP includes anonymous and account-based ownership, public sharing, management, protection, moderation, import/export, statistics and self-hosting. Organizations, simultaneous editing, SSO, subscriptions and custom domains remain outside scope.
