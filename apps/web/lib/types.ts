@@ -30,6 +30,10 @@ export type LayoutConfig = {
   columns: 2 | 3 | 4;
   density: "comfortable" | "compact";
   header_alignment: "left" | "center";
+  wallpaper_url: string | null;
+  wallpaper_fit: "cover" | "contain" | "tile";
+  wallpaper_position: "top" | "center" | "bottom";
+  wallpaper_overlay: number;
 };
 
 export type Site = {

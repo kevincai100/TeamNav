@@ -7,7 +7,7 @@ const csp = [
   `script-src 'self' 'unsafe-inline'${developmentEval}`,
   "style-src 'self' 'unsafe-inline'",
   `connect-src 'self' ${apiOrigin} ws: wss:`,
-  "img-src 'self' data: https:",
+  "img-src 'self' data: https: http:",
   "font-src 'self' data:",
   "object-src 'none'",
   "base-uri 'self'",

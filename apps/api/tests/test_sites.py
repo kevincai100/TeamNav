@@ -185,6 +185,10 @@ async def test_owner_can_update_site_and_rotate_edit_key(client: AsyncClient) ->
                 "columns": 3,
                 "density": "compact",
                 "header_alignment": "center",
+                "wallpaper_url": "https://cdn.example.com/team-wallpaper.jpg",
+                "wallpaper_fit": "cover",
+                "wallpaper_position": "top",
+                "wallpaper_overlay": 45,
             },
             "show_descriptions": False,
             "show_tags": False,
@@ -201,11 +205,26 @@ async def test_owner_can_update_site_and_rotate_edit_key(client: AsyncClient) ->
         "columns": 3,
         "density": "compact",
         "header_alignment": "center",
+        "wallpaper_url": "https://cdn.example.com/team-wallpaper.jpg",
+        "wallpaper_fit": "cover",
+        "wallpaper_position": "top",
+        "wallpaper_overlay": 45,
     }
     assert updated.json()["display_config"]["show_descriptions"] is False
     assert updated.json()["display_config"]["show_tags"] is False
     public_site = await client.get(f"/api/v1/public/sites/{slug}")
     assert public_site.json()["layout_config"]["accent_color"] == "#2563EB"
+    assert public_site.json()["layout_config"]["wallpaper_url"] == (
+        "https://cdn.example.com/team-wallpaper.jpg"
+    )
+
+    rejected_wallpaper = await client.patch(
+        f"/api/v1/manage/sites/{slug}",
+        headers={"X-CSRF-Token": csrf},
+        json={"layout_config": {"wallpaper_url": "javascript:alert(1)"}},
+    )
+    assert rejected_wallpaper.status_code == 422
+
     metadata = await client.get(f"/api/v1/public/sites/{slug}/metadata")
     assert metadata.json() == {"name": "设计团队", "allow_indexing": True}
 

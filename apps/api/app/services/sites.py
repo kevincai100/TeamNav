@@ -20,6 +20,10 @@ DEFAULT_LAYOUT_CONFIG = {
     "columns": 3,
     "density": "comfortable",
     "header_alignment": "left",
+    "wallpaper_url": None,
+    "wallpaper_fit": "cover",
+    "wallpaper_position": "center",
+    "wallpaper_overlay": 40,
 }
 
 

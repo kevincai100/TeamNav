@@ -33,6 +33,17 @@
 .color-swatch.active { box-shadow: 0 0 0 2px var(--ink); }
 .custom-color { position: relative; overflow: hidden; border-radius: 7px; background: var(--surface-soft); color: var(--muted); cursor: pointer; }
 .custom-color input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.wallpaper-editor { display: grid; gap: 13px; }
+.wallpaper-url-row { min-width: 0; display: grid; grid-template-columns: 18px minmax(0, 1fr) 34px; align-items: center; gap: 9px; padding: 4px 5px 4px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--muted); }
+.wallpaper-url-row:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.wallpaper-url-row input { min-width: 0; height: 34px; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 12px; }
+.wallpaper-url-row button { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--muted); }
+.wallpaper-url-row button:hover { background: var(--surface-soft); color: var(--ink); }
+.wallpaper-options { padding-top: 2px; }
+.wallpaper-range { display: grid; gap: 8px; color: var(--ink); font-size: 12px; font-weight: 750; }
+.wallpaper-range > span { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wallpaper-range output { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.wallpaper-range input { width: 100%; height: 4px; margin: 7px 0; accent-color: var(--accent); cursor: pointer; }
 .appearance-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .segmented-control { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); }
 .segmented-control button { min-width: 0; min-height: 34px; padding: 0 8px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 12px; }

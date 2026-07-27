@@ -1,4 +1,5 @@
 from typing import Literal
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -30,6 +31,26 @@ class LayoutConfig(BaseModel):
     columns: Literal[2, 3, 4] = 3
     density: Literal["comfortable", "compact"] = "comfortable"
     header_alignment: Literal["left", "center"] = "left"
+    wallpaper_url: str | None = Field(default=None, max_length=2048)
+    wallpaper_fit: Literal["cover", "contain", "tile"] = "cover"
+    wallpaper_position: Literal["top", "center", "bottom"] = "center"
+    wallpaper_overlay: int = Field(default=40, ge=0, le=90)
+
+    @field_validator("wallpaper_url")
+    @classmethod
+    def valid_wallpaper_url(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        normalized = value.strip()
+        parsed = urlparse(normalized)
+        if (
+            parsed.scheme.lower() not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.username is not None
+            or parsed.password is not None
+        ):
+            raise ValueError("WALLPAPER_URL_INVALID")
+        return normalized
 
 
 class SiteUpdate(BaseModel):

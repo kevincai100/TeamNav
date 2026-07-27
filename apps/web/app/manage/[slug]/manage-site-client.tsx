@@ -2,8 +2,8 @@
 
 import {
   AlignCenter, AlignLeft, BarChart3, Copy, CopyPlus, Database, Download, Eye,
-  FileUp, KeyRound, LayoutGrid, Link2, Monitor, Moon, Palette, Plus, RotateCw,
-  Save, Settings2, ShieldCheck, Sun, Trash2, UserPlus,
+  FileUp, ImageIcon, KeyRound, LayoutGrid, Link2, Monitor, Moon, Palette, Plus,
+  RotateCw, Save, Settings2, ShieldCheck, Sun, Trash2, UserPlus, X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ import { NavigationView } from "@/components/navigation-view";
 import { SortableEditor } from "@/components/sortable-editor";
 import { API_URL, api, ApiError } from "@/lib/api";
 import { reorderItems } from "@/lib/navigation";
-import { ACCENT_PRESETS } from "@/lib/personalization";
+import { ACCENT_PRESETS, getWallpaperStyle } from "@/lib/personalization";
 import type { Category, NavLink, Site } from "@/lib/types";
 
 type SessionResponse = { site: Site; csrf_token: string };
@@ -71,6 +71,10 @@ export function ManageSiteClient({ slug }: { slug: string }) {
 
   async function saveSettings() {
     if (!site) return;
+    if (site.layout_config.wallpaper_url && !getWallpaperStyle(site.layout_config)) {
+      toast.error("壁纸 URL 仅支持 http 或 https 地址");
+      return;
+    }
     try {
       const payload: Record<string, unknown> = {
         name: site.name, description: site.description, icon: site.icon, theme: site.theme,
@@ -270,6 +274,41 @@ export function ManageSiteClient({ slug }: { slug: string }) {
                   <div className="choice-grid three">
                     {([['clean', '纯净'], ['soft', '柔和'], ['contrast', '对比']] as const).map(([value, label]) => <button key={value} className={site.layout_config.canvas_style === value ? "active" : ""} onClick={() => patchLayout({ canvas_style: value })}><span className={`canvas-sample ${value}`} />{label}</button>)}
                   </div>
+                </fieldset>
+
+                <fieldset className="appearance-group wallpaper-editor">
+                  <legend>背景图片</legend>
+                  <div className="wallpaper-url-row">
+                    <ImageIcon size={17} aria-hidden="true" />
+                    <input
+                      type="url"
+                      value={site.layout_config.wallpaper_url ?? ""}
+                      onChange={(event) => patchLayout({ wallpaper_url: event.target.value || null })}
+                      placeholder="https://example.com/wallpaper.jpg"
+                      aria-label="壁纸 URL"
+                    />
+                    {site.layout_config.wallpaper_url && <button type="button" onClick={() => patchLayout({ wallpaper_url: null })} title="清除壁纸" aria-label="清除壁纸"><X size={16} /></button>}
+                  </div>
+                  {site.layout_config.wallpaper_url && <>
+                    <div className="appearance-pair wallpaper-options">
+                      <fieldset className="appearance-group">
+                        <legend>铺放方式</legend>
+                        <div className="segmented-control">
+                          {([['cover', '铺满'], ['contain', '完整'], ['tile', '平铺']] as const).map(([value, label]) => <button key={value} type="button" className={site.layout_config.wallpaper_fit === value ? "active" : ""} onClick={() => patchLayout({ wallpaper_fit: value })}>{label}</button>)}
+                        </div>
+                      </fieldset>
+                      <fieldset className="appearance-group">
+                        <legend>图片焦点</legend>
+                        <div className="segmented-control">
+                          {([['top', '顶部'], ['center', '居中'], ['bottom', '底部']] as const).map(([value, label]) => <button key={value} type="button" className={site.layout_config.wallpaper_position === value ? "active" : ""} onClick={() => patchLayout({ wallpaper_position: value })}>{label}</button>)}
+                        </div>
+                      </fieldset>
+                    </div>
+                    <label className="wallpaper-range">
+                      <span><span>背景遮罩</span><output>{site.layout_config.wallpaper_overlay}%</output></span>
+                      <input type="range" min="0" max="90" step="5" value={site.layout_config.wallpaper_overlay} onChange={(event) => patchLayout({ wallpaper_overlay: Number(event.target.value) })} />
+                    </label>
+                  </>}
                 </fieldset>
 
                 <fieldset className="appearance-group">

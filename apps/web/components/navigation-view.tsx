@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { filterCategories } from "@/lib/search";
 import { API_URL } from "@/lib/api";
 import { faviconUrl } from "@/lib/navigation";
-import { normalizeLayoutConfig } from "@/lib/personalization";
+import { getWallpaperStyle, normalizeLayoutConfig } from "@/lib/personalization";
 import type { Site } from "@/lib/types";
 
 export function NavigationView({ site, preview = false }: { site: Site; preview?: boolean }) {
@@ -20,6 +20,7 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
   const visibleCount = categories.reduce((total, category) => total + category.links.length, 0);
   const totalCount = site.categories.reduce((total, category) => total + category.links.length, 0);
   const layout = normalizeLayoutConfig(site.layout_config);
+  const wallpaperStyle = getWallpaperStyle(layout);
   const appearance = {
     "--site-accent": layout.accent_color,
     "--nav-columns": layout.columns,
@@ -41,9 +42,15 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
 
   return (
     <section
-      className={`nav-view theme-${site.theme} canvas-${layout.canvas_style} cards-${layout.card_style} density-${layout.density} width-${layout.content_width} header-${layout.header_alignment} ${preview ? "nav-preview" : ""}`}
+      className={`nav-view theme-${site.theme} canvas-${layout.canvas_style} cards-${layout.card_style} density-${layout.density} width-${layout.content_width} header-${layout.header_alignment} ${wallpaperStyle ? "wallpaper-active" : ""} ${preview ? "nav-preview" : ""}`}
       style={appearance}
     >
+      {wallpaperStyle && (
+        <>
+          <div className="nav-wallpaper" style={wallpaperStyle} aria-hidden="true" />
+          <div className="nav-wallpaper-overlay" style={{ opacity: layout.wallpaper_overlay / 100 }} aria-hidden="true" />
+        </>
+      )}
       <div className="nav-inner">
         <header className="nav-hero">
           <div className="nav-title-row">
