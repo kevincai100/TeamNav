@@ -69,7 +69,7 @@ class BookmarkCodec:
         return [category for category in parser.categories if category.links]
 
     @staticmethod
-    def export(site_name: str, categories: list) -> str:
+    def export(site_name: str, categories: list, *, public: bool = False) -> str:
         lines = [
             "<!DOCTYPE NETSCAPE-Bookmark-file-1>",
             '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
@@ -78,8 +78,13 @@ class BookmarkCodec:
             "<DL><p>",
         ]
         for category in categories:
+            if public and not category.is_visible:
+                continue
+            links = [link for link in category.links if not public or link.is_enabled]
+            if public and not links:
+                continue
             lines.extend([f"  <DT><H3>{escape(category.name)}</H3>", "  <DL><p>"])
-            for link in category.links:
+            for link in links:
                 tags = escape(",".join(link.tags), quote=True)
                 href = escape(link.url, quote=True)
                 name = escape(link.name)

@@ -79,6 +79,7 @@ export function ManageSiteClient({ slug }: { slug: string }) {
       const payload: Record<string, unknown> = {
         name: site.name, description: site.description, icon: site.icon, theme: site.theme,
         allow_indexing: site.allow_indexing,
+        allow_public_bookmark_export: site.display_config.allow_public_bookmark_export,
         show_search: site.display_config.show_search,
         show_updated_at: site.display_config.show_updated_at,
         show_visit_count: site.display_config.show_visit_count,
@@ -391,6 +392,7 @@ export function ManageSiteClient({ slug }: { slug: string }) {
             <div className="section-title"><span><ShieldCheck size={17} /> 访问与收录</span></div>
             <div className="editor-content form-stack">
               <label className="toggle-field"><input type="checkbox" checked={site.allow_indexing} onChange={(event) => setSite({ ...site, allow_indexing: event.target.checked })} /><span>允许搜索引擎收录</span></label>
+              <label className="toggle-field"><input type="checkbox" checked={site.display_config.allow_public_bookmark_export === true} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, allow_public_bookmark_export: event.target.checked } })} /><span>允许访客导出书签</span></label>
               <div className="field"><label>公开访问密码</label><input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setPasswordChanged(true); }} placeholder={site.password_protected ? "已启用；输入新密码可替换" : "输入至少 6 位密码以启用"} />{passwordChanged && newPassword && newPassword.length < 6 && <span className="field-error">密码至少 6 位</span>}{site.password_protected && <button type="button" className="button ghost" onClick={() => { setNewPassword(""); setPasswordChanged(true); }}>关闭访问密码</button>}</div>
               <button className="button" disabled={passwordChanged && newPassword.length > 0 && newPassword.length < 6} onClick={saveSettings}><Save size={16} /> 保存访问设置</button>
             </div>

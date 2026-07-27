@@ -132,6 +132,66 @@ async def test_bookmark_import_export_and_site_clone(client: AsyncClient) -> Non
 
 
 @pytest.mark.asyncio
+async def test_public_bookmark_export_requires_opt_in_and_filters_private_links(
+    client: AsyncClient,
+) -> None:
+    created = await create_site(client, "Shared Bookmarks")
+    slug, csrf = await manage(client, created)
+    public_category = await client.post(
+        f"/api/v1/manage/sites/{slug}/categories",
+        headers={"X-CSRF-Token": csrf},
+        json={"name": "Public tools"},
+    )
+    hidden_category = await client.post(
+        f"/api/v1/manage/sites/{slug}/categories",
+        headers={"X-CSRF-Token": csrf},
+        json={"name": "Private tools", "is_visible": False},
+    )
+    for category_id, name, url, enabled in [
+        (public_category.json()["id"], "Visible", "https://visible.example.com", True),
+        (public_category.json()["id"], "Disabled", "https://disabled.example.com", False),
+        (hidden_category.json()["id"], "Hidden", "https://hidden.example.com", True),
+    ]:
+        response = await client.post(
+            f"/api/v1/manage/sites/{slug}/links",
+            headers={"X-CSRF-Token": csrf},
+            json={"category_id": category_id, "name": name, "url": url, "is_enabled": enabled},
+        )
+        assert response.status_code == 201
+
+    disabled = await client.get(f"/api/v1/public/sites/{slug}/bookmarks/export")
+    assert disabled.status_code == 403
+    assert disabled.json()["detail"]["code"] == "BOOKMARK_EXPORT_DISABLED"
+
+    configured = await client.patch(
+        f"/api/v1/manage/sites/{slug}",
+        headers={"X-CSRF-Token": csrf},
+        json={"allow_public_bookmark_export": True, "access_password": "shared-secret"},
+    )
+    assert configured.status_code == 200
+    assert configured.json()["display_config"]["allow_public_bookmark_export"] is True
+
+    locked = await client.get(f"/api/v1/public/sites/{slug}/bookmarks/export")
+    assert locked.status_code == 401
+    assert locked.json()["detail"]["code"] == "PASSWORD_REQUIRED"
+    assert (
+        await client.post(
+            f"/api/v1/public/sites/{slug}/unlock",
+            json={"password": "shared-secret"},
+        )
+    ).status_code == 204
+
+    exported = await client.get(f"/api/v1/public/sites/{slug}/bookmarks/export")
+    assert exported.status_code == 200
+    assert exported.headers["cache-control"] == "private, no-store"
+    assert 'attachment; filename="teamnav-' in exported.headers["content-disposition"]
+    assert "https://visible.example.com" in exported.text
+    assert "https://disabled.example.com" not in exported.text
+    assert "https://hidden.example.com" not in exported.text
+    assert "Private tools" not in exported.text
+
+
+@pytest.mark.asyncio
 async def test_daily_page_views_and_link_clicks_are_reported(client: AsyncClient) -> None:
     created = await create_site(client, "Measured Workspace")
     slug, csrf = await manage(client, created)

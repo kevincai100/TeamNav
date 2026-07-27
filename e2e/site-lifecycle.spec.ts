@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 test("create, manage, search, and rotate the edit key", async ({ page, browser }) => {
   await page.goto("/create");
@@ -79,4 +80,47 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   await verificationPage.goto(newManageUrl!);
   await expect(verificationPage.getByText("管理模式")).toBeVisible();
   await freshContext.close();
+});
+
+test("owner can let anonymous visitors export public bookmarks", async ({ page, browser }) => {
+  await page.goto("/create");
+  await page.getByLabel("站点名称 *").fill("Public Bookmark Workspace");
+  const captcha = page.locator("#captcha-answer");
+  const label = await page.locator('label[for="captcha-answer"]').textContent();
+  const numbers = label?.match(/(\d+)\s*\+\s*(\d+)/);
+  expect(numbers).not.toBeNull();
+  await captcha.fill(String(Number(numbers?.[1]) + Number(numbers?.[2])));
+  await page.getByRole("button", { name: "创建导航站" }).click();
+  await expect(page.getByText("创建完成")).toBeVisible();
+  await page.locator('.save-confirm input[type="checkbox"]').check();
+  const manageUrl = await page.getByTestId("manage-link").getAttribute("href");
+  expect(manageUrl).not.toBeNull();
+  const slug = new URL(manageUrl!, page.url()).pathname.split("/").at(-1);
+  await page.getByTestId("manage-link").click();
+  await expect(page.getByText("管理模式")).toBeVisible();
+  await page.getByRole("button", { name: "设置" }).click();
+  await page.getByRole("checkbox", { name: "允许访客导出书签" }).check();
+  await page.getByRole("button", { name: "保存访问设置" }).click();
+  await expect(page.getByText("站点设置已保存")).toBeVisible();
+
+  const visitorContext = await browser.newContext({ acceptDownloads: true });
+  const visitorPage = await visitorContext.newPage();
+  await visitorPage.setViewportSize({ width: 390, height: 844 });
+  await visitorPage.goto(`/s/${slug}`);
+  await expect(visitorPage.getByRole("button", { name: "导出书签" })).toBeVisible();
+  expect(
+    await visitorPage.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
+  const downloadPromise = visitorPage.waitForEvent("download");
+  await visitorPage.getByRole("button", { name: "导出书签" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe(`teamnav-${slug}-bookmarks.html`);
+  const downloadPath = await download.path();
+  expect(downloadPath).not.toBeNull();
+  const content = await readFile(downloadPath!, "utf8");
+  expect(content).toContain("<!DOCTYPE NETSCAPE-Bookmark-file-1>");
+  expect(content).toContain("Public Bookmark Workspace");
+  await visitorContext.close();
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, ExternalLink, Pin, Search, X } from "lucide-react";
+import { Copy, Download, ExternalLink, Pin, Search, X } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -29,6 +29,27 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
   async function copyLink(url: string) {
     await navigator.clipboard.writeText(url);
     toast.success("链接已复制");
+  }
+
+  async function downloadBookmarks() {
+    try {
+      const response = await fetch(
+        `${API_URL}/api/v1/public/sites/${site.public_slug}/bookmarks/export`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new Error("BOOKMARK_EXPORT_FAILED");
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `teamnav-${site.public_slug}-bookmarks.html`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+      toast.success("书签文件已下载");
+    } catch {
+      toast.error("书签导出失败，请稍后重试");
+    }
   }
 
   function trackClick(linkId: string) {
@@ -121,6 +142,7 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
           {site.display_config.show_updated_at !== false && <span>更新于 {new Date(site.updated_at).toLocaleDateString("zh-CN")}</span>}
           {site.display_config.show_visit_count && <span>{site.visit_count} 次访问</span>}
           <span className="powered-by">TeamNav</span>
+          {!preview && site.display_config.allow_public_bookmark_export && <button type="button" className="bookmark-export" onClick={() => void downloadBookmarks()}><Download size={13} />导出书签</button>}
           {!preview && <a href={`/report/${site.public_slug}`}>举报</a>}
         </footer>
       </div>

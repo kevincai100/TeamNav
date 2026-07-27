@@ -46,6 +46,7 @@ export type Site = {
   password_protected: boolean;
   layout_config: LayoutConfig;
   display_config: {
+    allow_public_bookmark_export?: boolean;
     show_search?: boolean;
     show_updated_at?: boolean;
     show_visit_count?: boolean;

@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +13,7 @@ from app.models import AbuseReport, Category, Link
 from app.schemas import PasswordUnlock, ReportCreate, SiteCreate
 from app.services.account_auth import AccountAuth
 from app.services.auth import AccessAuth, AuthenticationError
+from app.services.bookmarks import BookmarkCodec
 from app.services.captcha import CaptchaError, CaptchaVerifier
 from app.services.metrics import MetricsRecorder
 from app.services.sites import RateLimitError, SiteDisabledError, SiteNotFoundError, SiteService
@@ -83,6 +85,41 @@ async def public_site(
     await MetricsRecorder(session).increment(site.id, "page_views")
     await session.commit()
     return service.serialize(site, public=True)
+
+
+@router.get("/public/sites/{slug}/bookmarks/export", response_class=PlainTextResponse)
+async def export_public_bookmarks(
+    slug: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> PlainTextResponse:
+    service = SiteService(session, settings)
+    try:
+        site = await service.get_site(slug)
+    except SiteNotFoundError as error:
+        raise HTTPException(status_code=404, detail={"code": "SITE_NOT_FOUND"}) from error
+    except SiteDisabledError as error:
+        raise HTTPException(status_code=410, detail={"code": "SITE_DISABLED"}) from error
+    if not await AccessAuth(session, settings).is_authorized(
+        site, request.cookies.get("teamnav_access")
+    ):
+        raise HTTPException(status_code=401, detail={"code": "PASSWORD_REQUIRED"})
+    if not site.display_config.get("allow_public_bookmark_export", False):
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "BOOKMARK_EXPORT_DISABLED"},
+        )
+    return PlainTextResponse(
+        BookmarkCodec.export(site.name, site.categories, public=True),
+        media_type="text/html; charset=utf-8",
+        headers={
+            "Cache-Control": "private, no-store",
+            "Content-Disposition": (
+                f'attachment; filename="teamnav-{slug}-bookmarks.html"'
+            )
+        },
+    )
 
 
 @router.post("/public/sites/{slug}/links/{link_id}/click", status_code=204)

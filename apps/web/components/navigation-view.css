@@ -101,7 +101,9 @@
 .density-compact .link-description { display: none; }
 .density-compact .link-icon { width: 36px; height: 36px; }
 .empty-search { min-height: 220px; display: grid; place-items: center; align-content: center; gap: 10px; color: var(--nav-muted); }
-.nav-footer { display: flex; justify-content: center; gap: 16px; margin-top: 52px; padding-top: 20px; border-top: 1px solid var(--nav-line); color: var(--nav-muted); font-size: 11px; }
+.nav-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 16px; margin-top: 52px; padding-top: 20px; border-top: 1px solid var(--nav-line); color: var(--nav-muted); font-size: 11px; }
+.bookmark-export { display: inline-flex; align-items: center; gap: 4px; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; }
+.bookmark-export:hover { color: var(--nav-ink); }
 .powered-by { color: var(--nav-ink); font-weight: 750; }
 .nav-preview { min-height: 100%; }
 .nav-preview .nav-inner { width: calc(100% - 32px); padding-top: 30px; }
