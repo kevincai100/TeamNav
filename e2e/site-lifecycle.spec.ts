@@ -57,14 +57,36 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   await modal.getByRole("button", { name: "保存链接" }).click();
   await expect(page.locator(".manage-link").filter({ hasText: "Engineering Portal" })).toBeVisible();
 
+  const batchSection = page.locator("details.editor-section").filter({ hasText: "批量与数据" });
+  await batchSection.locator("summary").click();
+  const batchLines = Array.from(
+    { length: 12 },
+    (_, index) => `Resource ${index + 1} | https://example.com/resource-${index + 1}`,
+  ).join("\n");
+  await batchSection.locator("textarea").fill(batchLines);
+  await batchSection.getByRole("button", { name: "批量添加到所选分类" }).click();
+  await expect(page.getByText("批量链接已添加")).toBeVisible();
+
   const slug = new URL(oldManageUrl!).pathname.split("/").at(-1);
   const publicPage = await page.context().newPage();
   await publicPage.goto(`/s/${slug}`);
   await expect(publicPage.locator(".nav-view")).toHaveClass(/cards-outline/);
   await expect(publicPage.locator(".nav-view")).toHaveClass(/density-compact/);
   await expect(publicPage.locator(".nav-view")).toHaveCSS("--site-accent", "#2563EB");
-  await publicPage.getByLabel("搜索导航链接").fill("engineering");
-  await expect(publicPage.getByText("Engineering Portal")).toBeVisible();
+  await expect(publicPage.getByText("Resource 12", { exact: true })).toHaveCount(0);
+  await publicPage.getByRole("button", { name: "展开其余 1 个" }).click();
+  await expect(publicPage.getByText("Resource 12", { exact: true })).toBeVisible();
+  await publicPage.getByRole("button", { name: "收起" }).click();
+  await expect(publicPage.getByText("Resource 12", { exact: true })).toHaveCount(0);
+
+  const publicSearch = publicPage.getByLabel("搜索导航链接");
+  await publicSearch.fill("Resource 12");
+  await expect(publicPage.getByText("Resource 12", { exact: true })).toBeVisible();
+  await expect(publicPage.locator(".category-toggle")).toHaveCount(0);
+  await publicSearch.fill("");
+  await publicPage.getByRole("button", { name: "Engineering", exact: true }).click();
+  await expect(publicPage.getByText("Resource 12", { exact: true })).toBeVisible();
+  await expect(publicPage.locator(".category-toggle")).toHaveCount(0);
   await publicPage.close();
 
   await page.getByRole("button", { name: "设置" }).click();

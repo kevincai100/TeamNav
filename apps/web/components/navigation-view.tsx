@@ -1,11 +1,12 @@
 "use client";
 
-import { Copy, Download, ExternalLink, Pin, Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, Download, ExternalLink, Pin, Search, X } from "lucide-react";
 import { type CSSProperties, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { filterCategories } from "@/lib/search";
 import { API_URL } from "@/lib/api";
+import { getCategoryDisplay } from "@/lib/category-display";
 import { faviconUrl } from "@/lib/navigation";
 import { getWallpaperStyle, normalizeLayoutConfig } from "@/lib/personalization";
 import type { Site } from "@/lib/types";
@@ -13,12 +14,14 @@ import type { Site } from "@/lib/types";
 export function NavigationView({ site, preview = false }: { site: Site; preview?: boolean }) {
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(() => new Set());
   const categories = useMemo(
     () => filterCategories(site.categories, query, categoryId),
     [site.categories, query, categoryId],
   );
   const visibleCount = categories.reduce((total, category) => total + category.links.length, 0);
   const totalCount = site.categories.reduce((total, category) => total + category.links.length, 0);
+  const revealAllCategories = query.trim().length > 0 || categoryId !== null;
   const layout = normalizeLayoutConfig(site.layout_config);
   const wallpaperStyle = getWallpaperStyle(layout);
   const appearance = {
@@ -58,6 +61,15 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
       method: "POST",
       credentials: "include",
       keepalive: true,
+    });
+  }
+
+  function toggleCategory(categoryIdToToggle: string) {
+    setExpandedCategoryIds((current) => {
+      const next = new Set(current);
+      if (next.has(categoryIdToToggle)) next.delete(categoryIdToToggle);
+      else next.add(categoryIdToToggle);
+      return next;
     });
   }
 
@@ -110,31 +122,50 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
         )}
 
         <div className="category-list">
-          {categories.map((category) => (
-            <section className="nav-category" key={category.id}>
-              <div className="category-heading">
-                <span className="category-icon" aria-hidden="true">{category.icon}</span>
-                <div><h2>{category.name}</h2>{category.description && <p>{category.description}</p>}</div>
-                <span className="category-count">{category.links.length}</span>
-              </div>
-              <div className="link-grid">
-                {category.links.map((link) => (
-                  <article className="link-card" key={link.id}>
-                    <a href={preview ? undefined : link.url} target={link.open_mode === "new" ? "_blank" : "_self"} rel="noopener noreferrer" onClick={(event) => { if (preview) event.preventDefault(); else trackClick(link.id); }}>
-                      <LinkIcon url={link.url} fallback={link.icon} />
-                      <span className="link-content">
-                        <span className="link-name">{link.name}{link.is_pinned && <Pin size={12} />}</span>
-                        {site.display_config.show_descriptions !== false && link.description && <span className="link-description">{link.description}</span>}
-                        {site.display_config.show_tags !== false && link.tags.length > 0 && <span className="link-tags">{link.tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>)}</span>}
-                      </span>
-                      <ExternalLink className="link-arrow" size={16} aria-hidden="true" />
-                    </a>
-                    {!preview && <button className="copy-link" onClick={() => copyLink(link.url)} title="复制链接" aria-label={`复制 ${link.name} 链接`}><Copy size={15} /></button>}
-                  </article>
-                ))}
-              </div>
-            </section>
-          ))}
+          {categories.map((category) => {
+            const display = getCategoryDisplay(category.links, {
+              expanded: expandedCategoryIds.has(category.id),
+              revealAll: revealAllCategories,
+            });
+            const linkGridId = `category-links-${category.id}`;
+            return (
+              <section className="nav-category" key={category.id}>
+                <div className="category-heading">
+                  <span className="category-icon" aria-hidden="true">{category.icon}</span>
+                  <div><h2>{category.name}</h2>{category.description && <p>{category.description}</p>}</div>
+                  <span className="category-count">{category.links.length}</span>
+                </div>
+                <div className="link-grid" id={linkGridId}>
+                  {display.links.map((link) => (
+                    <article className="link-card" key={link.id}>
+                      <a href={preview ? undefined : link.url} target={link.open_mode === "new" ? "_blank" : "_self"} rel="noopener noreferrer" onClick={(event) => { if (preview) event.preventDefault(); else trackClick(link.id); }}>
+                        <LinkIcon url={link.url} fallback={link.icon} />
+                        <span className="link-content">
+                          <span className="link-name">{link.name}{link.is_pinned && <Pin size={12} />}</span>
+                          {site.display_config.show_descriptions !== false && link.description && <span className="link-description">{link.description}</span>}
+                          {site.display_config.show_tags !== false && link.tags.length > 0 && <span className="link-tags">{link.tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>)}</span>}
+                        </span>
+                        <ExternalLink className="link-arrow" size={16} aria-hidden="true" />
+                      </a>
+                      {!preview && <button className="copy-link" onClick={() => copyLink(link.url)} title="复制链接" aria-label={`复制 ${link.name} 链接`}><Copy size={15} /></button>}
+                    </article>
+                  ))}
+                </div>
+                {display.toggle && (
+                  <button
+                    type="button"
+                    className="category-toggle"
+                    aria-controls={linkGridId}
+                    aria-expanded={display.toggle === "collapse"}
+                    onClick={() => toggleCategory(category.id)}
+                  >
+                    {display.toggle === "expand" ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                    {display.toggle === "expand" ? `展开其余 ${display.hiddenCount} 个` : "收起"}
+                  </button>
+                )}
+              </section>
+            );
+          })}
           {visibleCount === 0 && <div className="empty-search"><Search size={24} /><p>没有找到匹配的链接</p></div>}
         </div>
 
