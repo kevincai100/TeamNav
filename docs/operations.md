@@ -4,6 +4,17 @@
 
 Copy `.env.example` to `.env`, replace `SECRET_KEY` and `ADMIN_TOKEN` with long random values, then choose a database mode.
 
+All-in-one SQLite deployment (one application container):
+
+```bash
+docker compose -f docker-compose.aio.yml pull
+docker compose -f docker-compose.aio.yml up -d
+```
+
+The AIO image includes Nginx, Next.js, FastAPI and SQLite. It exposes only port `8080` inside the
+container and stores the database under `/data` in the `teamnav-aio-data` volume. Set an external
+`DATABASE_URL` to use PostgreSQL or MySQL with the same image.
+
 To deploy published images instead of building from source:
 
 ```bash
@@ -41,9 +52,30 @@ proxy. Never expose the API, web, or database container ports publicly.
 4. Run `docker compose up -d`. The API runs forward migrations before accepting traffic.
 5. Verify the gateway `/health/ready`, account session restoration and the public creation flow.
 
+For the AIO deployment, the complete update command is:
+
+```bash
+docker compose -f docker-compose.aio.yml pull
+docker compose -f docker-compose.aio.yml up -d
+docker compose -f docker-compose.aio.yml ps
+```
+
+The named data volume survives container replacement. The supervisor handles termination signals,
+and database migrations run before the new container becomes healthy. Expect a short restart; use
+the split deployment with multiple replicas and an external database when zero-downtime rollout is required.
+
 ## Backup and restore
 
-For SQLite, back up the `teamnav-sqlite` volume while the API is stopped. For bundled PostgreSQL, create a compressed backup:
+For split SQLite, back up the `teamnav-sqlite` volume while the API is stopped. For AIO SQLite, stop
+the container and copy the database before upgrading:
+
+```bash
+docker compose -f docker-compose.aio.yml stop teamnav
+docker compose -f docker-compose.aio.yml cp teamnav:/data/teamnav.db ./teamnav.db
+docker compose -f docker-compose.aio.yml start teamnav
+```
+
+For bundled PostgreSQL, create a compressed backup:
 
 ```bash
 docker compose exec -T postgres pg_dump -U teamnav -d teamnav -Fc > teamnav.dump

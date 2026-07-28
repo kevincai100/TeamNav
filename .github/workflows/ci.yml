@@ -17,7 +17,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e "apps/api[dev]"
-      - run: ruff check app tests alembic
+      - run: ruff check app tests alembic ../../deploy/aio/supervisor.py
         working-directory: apps/api
       - run: pytest -q
         working-directory: apps/api
@@ -64,6 +64,7 @@ jobs:
       - run: docker compose config --quiet
       - run: docker compose -f docker-compose.yml -f docker-compose.postgres.yml config --quiet
       - run: docker compose -f docker-compose.yml -f docker-compose.mysql.yml config --quiet
+      - run: docker compose -f docker-compose.aio.yml config --quiet
       - name: Smoke test SQLite
         run: |
           trap 'docker compose ps; docker compose logs --no-color' ERR
@@ -82,6 +83,17 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --build --wait
           curl --fail --silent --show-error http://localhost:3000/health/ready
           docker compose -f docker-compose.yml -f docker-compose.mysql.yml down --volumes
+      - name: Smoke test all-in-one image
+        run: |
+          trap 'docker compose -f docker-compose.aio.yml ps; docker compose -f docker-compose.aio.yml logs --no-color' ERR
+          docker compose -f docker-compose.aio.yml up -d --build --wait
+          curl --fail --silent --show-error http://localhost:3000/health/ready
+          docker compose -f docker-compose.aio.yml exec -T teamnav python -c "import os; assert os.getuid() != 0"
+          docker compose -f docker-compose.aio.yml exec -T teamnav test -s /data/teamnav.db
+          docker compose -f docker-compose.aio.yml restart teamnav
+          timeout 120 bash -c 'until curl --fail --silent http://localhost:3000/health/ready >/dev/null; do sleep 2; done'
+          docker compose -f docker-compose.aio.yml exec -T teamnav test -s /data/teamnav.db
+          docker compose -f docker-compose.aio.yml down --volumes
 
   publish:
     needs: [backend, web, e2e, containers]
@@ -97,6 +109,8 @@ jobs:
             dockerfile: apps/api/Dockerfile
           - name: web
             dockerfile: apps/web/Dockerfile
+          - name: aio
+            dockerfile: deploy/aio/Dockerfile
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v4

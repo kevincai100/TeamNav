@@ -13,7 +13,7 @@ TeamNav is a self-hosted, shareable navigation homepage for individuals and team
 - Site, category and link editing, drag-and-drop ordering, optional batch tags and live preview
 - Edit-key rotation, JSON/browser-bookmark import/export, cloning and basic daily statistics
 - CAPTCHA, abuse reporting, admin report processing and site blocking
-- SQLite, PostgreSQL or MySQL deployment with automatic Alembic migrations and Docker Compose
+- One-image SQLite deployment, or split SQLite, PostgreSQL and MySQL stacks with automatic migrations
 
 ## Repository
 
@@ -53,6 +53,44 @@ Open `http://localhost:3000`. The web app expects the API at `http://localhost:8
 Create `.env` from `.env.example` and set unique values for `SECRET_KEY` and `ADMIN_TOKEN`.
 The default Compose stack exposes a single gateway at `http://localhost:3000`; API requests stay
 same-origin and are forwarded to the private API container.
+
+### One-image deployment
+
+For the simplest installation, run the published all-in-one image. It contains Nginx, the web app,
+the API and SQLite, while application data remains in a named Docker volume:
+
+```bash
+docker compose -f docker-compose.aio.yml pull
+docker compose -f docker-compose.aio.yml up -d
+```
+
+The site is available at `http://localhost:3000`. Only one application container is created. To use
+an external PostgreSQL or MySQL server, set `DATABASE_URL` before starting the same AIO stack.
+
+The equivalent direct Docker command is:
+
+```bash
+docker volume create teamnav-data
+docker run -d --name teamnav --restart unless-stopped \
+  --env-file .env \
+  -p 3000:8080 \
+  -v teamnav-data:/data \
+  ghcr.io/kevincai100/teamnav-aio:latest
+```
+
+Update the AIO deployment without losing data:
+
+```bash
+docker compose -f docker-compose.aio.yml pull
+docker compose -f docker-compose.aio.yml up -d
+```
+
+Docker recreates the application container and reuses the data volume. The entrypoint applies
+forward database migrations before serving traffic and shuts all internal processes down cleanly.
+This is a short restart, not a zero-downtime hot reload. Automatic updaters such as Watchtower are
+optional and intentionally not enabled because they require Docker Socket access.
+
+### Split deployment
 
 Pull the published images without building locally:
 

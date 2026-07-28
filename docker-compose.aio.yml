@@ -1,0 +1,39 @@
+services:
+  teamnav:
+    image: ${TEAMNAV_AIO_IMAGE:-ghcr.io/kevincai100/teamnav-aio}:${TEAMNAV_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/aio/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+    restart: unless-stopped
+    environment:
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:////data/teamnav.db}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in .env}
+      CAPTCHA_REQUIRED: ${CAPTCHA_REQUIRED:-true}
+      CAPTCHA_TTL_SECONDS: ${CAPTCHA_TTL_SECONDS:-300}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      EDIT_SESSION_DAYS: ${EDIT_SESSION_DAYS:-7}
+      ACCESS_SESSION_HOURS: ${ACCESS_SESSION_HOURS:-24}
+      ACCOUNT_SESSION_DAYS: ${ACCOUNT_SESSION_DAYS:-30}
+      ADMIN_SESSION_HOURS: ${ADMIN_SESSION_HOURS:-8}
+      MAX_SITES_PER_IP_PER_HOUR: ${MAX_SITES_PER_IP_PER_HOUR:-5}
+      MAX_SITES_PER_IP_PER_DAY: ${MAX_SITES_PER_IP_PER_DAY:-20}
+      MAX_CATEGORIES_PER_SITE: ${MAX_CATEGORIES_PER_SITE:-30}
+      MAX_LINKS_PER_SITE: ${MAX_LINKS_PER_SITE:-500}
+      DEFAULT_NOINDEX: ${DEFAULT_NOINDEX:-true}
+    volumes:
+      - teamnav-aio-data:/data
+    ports:
+      - "${TEAMNAV_PORT:-3000}:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  teamnav-aio-data:
