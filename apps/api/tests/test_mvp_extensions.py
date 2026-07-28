@@ -177,7 +177,7 @@ async def test_bookmark_import_rejects_over_capacity_without_partial_writes(
 
 
 @pytest.mark.asyncio
-async def test_public_bookmark_export_requires_opt_in_and_filters_private_links(
+async def test_public_bookmark_export_filters_private_links(
     client: AsyncClient,
 ) -> None:
     created = await create_site(client, "Shared Bookmarks")
@@ -204,17 +204,12 @@ async def test_public_bookmark_export_requires_opt_in_and_filters_private_links(
         )
         assert response.status_code == 201
 
-    disabled = await client.get(f"/api/v1/public/sites/{slug}/bookmarks/export")
-    assert disabled.status_code == 403
-    assert disabled.json()["detail"]["code"] == "BOOKMARK_EXPORT_DISABLED"
-
     configured = await client.patch(
         f"/api/v1/manage/sites/{slug}",
         headers={"X-CSRF-Token": csrf},
-        json={"allow_public_bookmark_export": True, "access_password": "shared-secret"},
+        json={"access_password": "shared-secret"},
     )
     assert configured.status_code == 200
-    assert configured.json()["display_config"]["allow_public_bookmark_export"] is True
 
     locked = await client.get(f"/api/v1/public/sites/{slug}/bookmarks/export")
     assert locked.status_code == 401

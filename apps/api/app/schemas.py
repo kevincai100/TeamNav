@@ -59,7 +59,6 @@ class SiteUpdate(BaseModel):
     icon: str | None = Field(default=None, max_length=8)
     theme: Literal["light", "dark", "system"] | None = None
     allow_indexing: bool | None = None
-    allow_public_bookmark_export: bool | None = None
     show_search: bool | None = None
     show_updated_at: bool | None = None
     show_visit_count: bool | None = None

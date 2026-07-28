@@ -101,12 +101,15 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
               {site.description && <p>{site.description}</p>}
             </div>
           </div>
-          <div className="nav-meta" aria-label={t("工作台摘要")}>
-            <strong>{totalCount}</strong>
-            <span>{t("{count} 个常用入口", { count: "" }).trim()}</span>
-            <i aria-hidden="true" />
-            <strong>{site.categories.length}</strong>
-            <span>{t("{count} 个分组", { count: "" }).trim()}</span>
+          <div className="nav-hero-actions">
+            <div className="nav-meta" aria-label={t("工作台摘要")}>
+              <strong>{totalCount}</strong>
+              <span>{t("{count} 个常用入口", { count: "" }).trim()}</span>
+              <i aria-hidden="true" />
+              <strong>{site.categories.length}</strong>
+              <span>{t("{count} 个分组", { count: "" }).trim()}</span>
+            </div>
+            {!preview && <button type="button" className="nav-export-button" onClick={() => void downloadBookmarks()}><Download size={14} />{t("导出书签")}</button>}
           </div>
         </header>
 
@@ -225,7 +228,6 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
           {site.display_config.show_updated_at !== false && <span>{t("更新于 {date}", { date: formatDate(site.updated_at) })}</span>}
           {site.display_config.show_visit_count && <span>{t("{count} 次访问", { count: site.visit_count })}</span>}
           <span className="powered-by">TeamNav</span>
-          {!preview && site.display_config.allow_public_bookmark_export && <button type="button" className="bookmark-export" onClick={() => void downloadBookmarks()}><Download size={13} />{t("导出书签")}</button>}
           {!preview && <a href={`/report/${site.public_slug}`}>{t("举报")}</a>}
         </footer>
       </div>

@@ -71,7 +71,7 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   const importedFolder = page.locator(".manage-category").filter({
     has: page.locator('.category-name-input[value="Imported Folder"]'),
   });
-  await expect(importedFolder.locator(".category-icon-input")).toHaveValue("📁");
+  await expect(importedFolder.locator(".category-icon-value")).toHaveText("📁");
   const batchLines = Array.from(
     { length: 12 },
     (_, index) => `Resource ${index + 1} | https://example.com/resource-${index + 1}`,
@@ -118,7 +118,7 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   await freshContext.close();
 });
 
-test("owner can let anonymous visitors export public bookmarks", async ({ page, browser }) => {
+test("anonymous visitors can export public bookmarks", async ({ page, browser }) => {
   await page.goto("/create");
   await page.getByLabel("站点名称 *").fill("Public Bookmark Workspace");
   const captcha = page.locator("#captcha-answer");
@@ -132,12 +132,6 @@ test("owner can let anonymous visitors export public bookmarks", async ({ page, 
   const manageUrl = await page.getByTestId("manage-link").getAttribute("href");
   expect(manageUrl).not.toBeNull();
   const slug = new URL(manageUrl!, page.url()).pathname.split("/").at(-1);
-  await page.getByTestId("manage-link").click();
-  await expect(page.getByText("管理模式")).toBeVisible();
-  await page.getByRole("button", { name: "设置" }).click();
-  await page.getByRole("checkbox", { name: "允许访客导出书签" }).check();
-  await page.getByRole("button", { name: "保存访问设置" }).click();
-  await expect(page.getByText("站点设置已保存")).toBeVisible();
 
   const visitorContext = await browser.newContext({ acceptDownloads: true, locale: "zh-CN" });
   const visitorPage = await visitorContext.newPage();
@@ -188,7 +182,7 @@ test("account session restores editing credentials in a new tab", async ({ page,
   await returningPage.getByTitle("管理").click();
   await expect(returningPage.getByText("管理模式")).toBeVisible();
   await returningPage.getByRole("button", { name: "设置" }).click();
-  await returningPage.getByRole("checkbox", { name: "允许访客导出书签" }).check();
+  await returningPage.getByRole("checkbox", { name: "允许搜索引擎收录" }).check();
   await returningPage.getByRole("button", { name: "保存访问设置" }).click();
   await expect(returningPage.getByText("站点设置已保存")).toBeVisible();
   await returningPage.close();

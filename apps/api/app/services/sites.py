@@ -65,7 +65,6 @@ class SiteService:
             allow_indexing=not self.settings.default_noindex,
             layout_config=dict(DEFAULT_LAYOUT_CONFIG),
             display_config={
-                "allow_public_bookmark_export": False,
                 "show_search": True,
                 "show_updated_at": True,
                 "show_visit_count": False,
@@ -234,13 +233,16 @@ class SiteService:
             "password_protected": bool(site.access_password_hash),
             "layout_config": {**DEFAULT_LAYOUT_CONFIG, **site.layout_config},
             "display_config": {
-                "allow_public_bookmark_export": False,
                 "show_search": True,
                 "show_updated_at": True,
                 "show_visit_count": False,
                 "show_descriptions": True,
                 "show_tags": True,
-                **site.display_config,
+                **{
+                    key: value
+                    for key, value in site.display_config.items()
+                    if key != "allow_public_bookmark_export"
+                },
             },
             "visit_count": site.visit_count,
             "updated_at": site.updated_at.isoformat(),

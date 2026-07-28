@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { NavigationView } from "@/components/navigation-view";
+import { CategoryIconPicker } from "@/components/category-icon-picker";
 import { SortableEditor } from "@/components/sortable-editor";
 import { useI18n } from "@/components/locale-provider";
 import { API_URL, api, ApiError } from "@/lib/api";
@@ -81,7 +82,6 @@ export function ManageSiteClient({ slug }: { slug: string }) {
       const payload: Record<string, unknown> = {
         name: site.name, description: site.description, icon: site.icon, theme: site.theme,
         allow_indexing: site.allow_indexing,
-        allow_public_bookmark_export: site.display_config.allow_public_bookmark_export,
         show_search: site.display_config.show_search,
         show_updated_at: site.display_config.show_updated_at,
         show_visit_count: site.display_config.show_visit_count,
@@ -380,7 +380,7 @@ export function ManageSiteClient({ slug }: { slug: string }) {
           {editorTab === "content" && <><section className="editor-section">
             <div className="section-title"><span><Settings2 size={17} /> {t("分类与链接")}</span><span>{t("{count} 个分类", { count: site.categories.length })}</span></div>
             <div className="editor-content">
-              <form className="quick-add" onSubmit={addCategory}><input aria-label={t("分类图标")} value={categoryIcon} onChange={(event) => setCategoryIcon(event.target.value)} /><input aria-label={t("分类名称")} placeholder={t("新分类名称")} required value={categoryName} onChange={(event) => setCategoryName(event.target.value)} /><button className="icon-button" title={t("添加分类")}><Plus size={17} /></button></form>
+              <form className="quick-add" onSubmit={addCategory}><CategoryIconPicker label={t("分类图标")} value={categoryIcon} onChange={setCategoryIcon} /><input aria-label={t("分类名称")} placeholder={t("新分类名称")} required value={categoryName} onChange={(event) => setCategoryName(event.target.value)} /><button className="icon-button" title={t("添加分类")}><Plus size={17} /></button></form>
               <SortableEditor categories={site.categories} patchCategory={patchCategory} updateCategory={(category) => void updateCategory(category)} removeCategory={(category) => void removeCategory(category)} editLink={setEditingLink} removeLink={(link) => void removeLink(link)} reorderCategories={(active, over) => void reorderCategories(active, over)} reorderLinks={(active, targetCategory, over) => void reorderLinks(active, targetCategory, over)} />
             </div>
           </section>
@@ -421,7 +421,6 @@ export function ManageSiteClient({ slug }: { slug: string }) {
             <div className="section-title"><span><ShieldCheck size={17} /> {t("访问与收录")}</span></div>
             <div className="editor-content form-stack">
               <label className="toggle-field"><input type="checkbox" checked={site.allow_indexing} onChange={(event) => setSite({ ...site, allow_indexing: event.target.checked })} /><span>{t("允许搜索引擎收录")}</span></label>
-              <label className="toggle-field"><input type="checkbox" checked={site.display_config.allow_public_bookmark_export === true} onChange={(event) => setSite({ ...site, display_config: { ...site.display_config, allow_public_bookmark_export: event.target.checked } })} /><span>{t("允许访客导出书签")}</span></label>
               <div className="field"><label>{t("公开访问密码")}</label><input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setPasswordChanged(true); }} placeholder={t(site.password_protected ? "已启用；输入新密码可替换" : "输入至少 {count} 位密码以启用", { count: 6 })} />{passwordChanged && newPassword && newPassword.length < 6 && <span className="field-error">{t("密码至少 {count} 位", { count: 6 })}</span>}{site.password_protected && <button type="button" className="button ghost" onClick={() => { setNewPassword(""); setPasswordChanged(true); }}>{t("关闭访问密码")}</button>}</div>
               <button className="button" disabled={passwordChanged && newPassword.length > 0 && newPassword.length < 6} onClick={saveSettings}><Save size={16} /> {t("保存访问设置")}</button>
             </div>

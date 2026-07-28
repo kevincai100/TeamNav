@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { CategoryIconPicker } from "@/components/category-icon-picker";
 import { isFolderCollapsed } from "@/lib/folder-collapse";
 import type { Category, NavLink } from "@/lib/types";
 import { useI18n } from "@/components/locale-provider";
@@ -118,7 +119,7 @@ function SortableCategory({ category, collapsed, toggleCategory, ...props }: Omi
     <div className="manage-category-head">
       <button type="button" className="category-toggle" title={t(collapsed ? "展开目录" : "收起目录")} aria-label={t(collapsed ? "展开 {name} 目录" : "收起 {name} 目录", { name: category.name })} onClick={() => toggleCategory(category.id)}>{collapsed ? <ChevronRight size={17} /> : <ChevronDown size={17} />}</button>
       <button className="drag-handle" title={t("拖拽分类排序")} aria-label={t("拖拽 {name} 分类", { name: category.name })} {...sortable.attributes} {...sortable.listeners}><GripVertical size={17} /></button>
-      <input className="category-icon-input" value={category.icon} onChange={(event) => props.patchCategory(category.id, { icon: event.target.value })} />
+      <CategoryIconPicker value={category.icon} label={t("{name} 分类图标", { name: category.name })} onChange={(icon) => props.patchCategory(category.id, { icon })} />
       <input className="category-name-input" value={category.name} onChange={(event) => props.patchCategory(category.id, { name: event.target.value })} />
       <button className="icon-button" title={t("保存分类")} onClick={() => props.updateCategory(category)}><Save size={15} /></button>
       <button className="icon-button danger-icon" title={t("删除分类")} onClick={() => props.removeCategory(category)}><Trash2 size={15} /></button>

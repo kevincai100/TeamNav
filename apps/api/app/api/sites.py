@@ -105,11 +105,6 @@ async def export_public_bookmarks(
         site, request.cookies.get("teamnav_access")
     ):
         raise HTTPException(status_code=401, detail={"code": "PASSWORD_REQUIRED"})
-    if not site.display_config.get("allow_public_bookmark_export", False):
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "BOOKMARK_EXPORT_DISABLED"},
-        )
     return PlainTextResponse(
         BookmarkCodec.export(site.name, site.categories, public=True),
         media_type="text/html; charset=utf-8",

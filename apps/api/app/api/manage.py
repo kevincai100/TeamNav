@@ -152,7 +152,6 @@ async def update_site(
     site = await authorized_site(slug, request, session, settings, mutation=True)
     changes = data.model_dump(exclude_unset=True)
     display_keys = {
-        "allow_public_bookmark_export",
         "show_search",
         "show_updated_at",
         "show_visit_count",
