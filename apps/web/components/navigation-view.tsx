@@ -10,8 +10,11 @@ import { getCategoryDisplay } from "@/lib/category-display";
 import { faviconUrl } from "@/lib/navigation";
 import { getWallpaperStyle, normalizeLayoutConfig } from "@/lib/personalization";
 import type { Site } from "@/lib/types";
+import { CategoryTabs } from "@/components/category-tabs";
+import { useI18n } from "@/components/locale-provider";
 
 export function NavigationView({ site, preview = false }: { site: Site; preview?: boolean }) {
+  const { t, formatDate } = useI18n();
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(() => new Set());
@@ -31,7 +34,7 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
 
   async function copyLink(url: string) {
     await navigator.clipboard.writeText(url);
-    toast.success("链接已复制");
+    toast.success(t("链接已复制"));
   }
 
   async function downloadBookmarks() {
@@ -49,9 +52,9 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
       anchor.click();
       anchor.remove();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
-      toast.success("书签文件已下载");
+      toast.success(t("书签文件已下载"));
     } catch {
-      toast.error("书签导出失败，请稍后重试");
+      toast.error(t("书签导出失败，请稍后重试"));
     }
   }
 
@@ -89,36 +92,31 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
           <div className="nav-title-row">
             <div className="site-icon" aria-hidden="true">{site.icon}</div>
             <div className="site-heading">
-              <span className="workspace-kicker">共享工作台</span>
+              <span className="workspace-kicker">{t("共享工作台")}</span>
               <h1>{site.name}</h1>
               {site.description && <p>{site.description}</p>}
             </div>
           </div>
-          <div className="nav-meta" aria-label="工作台摘要">
+          <div className="nav-meta" aria-label={t("工作台摘要")}>
             <strong>{totalCount}</strong>
-            <span>个常用入口</span>
+            <span>{t("{count} 个常用入口", { count: "" }).trim()}</span>
             <i aria-hidden="true" />
             <strong>{site.categories.length}</strong>
-            <span>个分组</span>
+            <span>{t("{count} 个分组", { count: "" }).trim()}</span>
           </div>
         </header>
 
         {site.display_config.show_search !== false && (
           <div className="search-wrap">
             <Search size={19} aria-hidden="true" />
-            <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索名称、标签或域名" aria-label="搜索导航链接" />
-            {query && <button className="clear-search" onClick={() => setQuery("")} title="清除搜索" aria-label="清除搜索"><X size={16} /></button>}
-            {query && <span className="result-count">{visibleCount} 项</span>}
+            <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("搜索名称、标签或域名")} aria-label={t("搜索导航链接")} />
+            {query && <button className="clear-search" onClick={() => setQuery("")} title={t("清除搜索")} aria-label={t("清除搜索")}><X size={16} /></button>}
+            {query && <span className="result-count">{t("{count} 项", { count: visibleCount })}</span>}
           </div>
         )}
 
         {site.categories.length > 1 && (
-          <div className="category-tabs" role="tablist" aria-label="分类筛选">
-            <button className={!categoryId ? "active" : ""} onClick={() => setCategoryId(null)}>全部</button>
-            {site.categories.map((category) => (
-              <button key={category.id} className={categoryId === category.id ? "active" : ""} onClick={() => setCategoryId(category.id)}><span aria-hidden="true">{category.icon}</span>{category.name}</button>
-            ))}
-          </div>
+          <CategoryTabs categories={site.categories} activeId={categoryId} allLabel={t("全部")} ariaLabel={t("分类筛选")} onSelect={setCategoryId} />
         )}
 
         <div className="category-list">
@@ -147,7 +145,7 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
                         </span>
                         <ExternalLink className="link-arrow" size={16} aria-hidden="true" />
                       </a>
-                      {!preview && <button className="copy-link" onClick={() => copyLink(link.url)} title="复制链接" aria-label={`复制 ${link.name} 链接`}><Copy size={15} /></button>}
+                      {!preview && <button className="copy-link" onClick={() => copyLink(link.url)} title={t("复制链接")} aria-label={t("复制 {name} 链接", { name: link.name })}><Copy size={15} /></button>}
                     </article>
                   ))}
                 </div>
@@ -160,21 +158,21 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
                     onClick={() => toggleCategory(category.id)}
                   >
                     {display.toggle === "expand" ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-                    {display.toggle === "expand" ? `展开其余 ${display.hiddenCount} 个` : "收起"}
+                    {display.toggle === "expand" ? t("展开其余 {count} 个", { count: display.hiddenCount }) : t("收起")}
                   </button>
                 )}
               </section>
             );
           })}
-          {visibleCount === 0 && <div className="empty-search"><Search size={24} /><p>没有找到匹配的链接</p></div>}
+          {visibleCount === 0 && <div className="empty-search"><Search size={24} /><p>{t("没有找到匹配的链接")}</p></div>}
         </div>
 
         <footer className="nav-footer">
-          {site.display_config.show_updated_at !== false && <span>更新于 {new Date(site.updated_at).toLocaleDateString("zh-CN")}</span>}
-          {site.display_config.show_visit_count && <span>{site.visit_count} 次访问</span>}
+          {site.display_config.show_updated_at !== false && <span>{t("更新于 {date}", { date: formatDate(site.updated_at) })}</span>}
+          {site.display_config.show_visit_count && <span>{t("{count} 次访问", { count: site.visit_count })}</span>}
           <span className="powered-by">TeamNav</span>
-          {!preview && site.display_config.allow_public_bookmark_export && <button type="button" className="bookmark-export" onClick={() => void downloadBookmarks()}><Download size={13} />导出书签</button>}
-          {!preview && <a href={`/report/${site.public_slug}`}>举报</a>}
+          {!preview && site.display_config.allow_public_bookmark_export && <button type="button" className="bookmark-export" onClick={() => void downloadBookmarks()}><Download size={13} />{t("导出书签")}</button>}
+          {!preview && <a href={`/report/${site.public_slug}`}>{t("举报")}</a>}
         </footer>
       </div>
     </section>

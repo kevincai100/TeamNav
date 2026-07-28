@@ -132,6 +132,51 @@ async def test_bookmark_import_export_and_site_clone(client: AsyncClient) -> Non
 
 
 @pytest.mark.asyncio
+async def test_bookmark_import_rejects_over_capacity_without_partial_writes(
+    limited_client: AsyncClient,
+) -> None:
+    created = await create_site(limited_client, "Limited Workspace")
+    slug, csrf = await manage(limited_client, created)
+    existing_category = await limited_client.post(
+        f"/api/v1/manage/sites/{slug}/categories",
+        headers={"X-CSRF-Token": csrf},
+        json={"name": "Existing"},
+    )
+    await limited_client.post(
+        f"/api/v1/manage/sites/{slug}/links",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "category_id": existing_category.json()["id"],
+            "name": "Keep me",
+            "url": "https://existing.example.com",
+        },
+    )
+    bookmarks = """<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<DL><p><DT><H3>Imported</H3><DL><p>
+<DT><A HREF="https://one.example.com">One</A>
+<DT><A HREF="https://two.example.com">Two</A>
+</DL><p></DL><p>"""
+
+    imported = await limited_client.post(
+        f"/api/v1/manage/sites/{slug}/bookmarks/import",
+        headers={"X-CSRF-Token": csrf},
+        json={"mode": "merge", "html": bookmarks},
+    )
+
+    assert imported.status_code == 409
+    assert imported.json()["detail"] == {
+        "code": "BOOKMARK_IMPORT_LINK_LIMIT_REACHED",
+        "current": 1,
+        "importing": 2,
+        "limit": 2,
+    }
+    exported = await limited_client.get(f"/api/v1/manage/sites/{slug}/bookmarks/export")
+    assert "https://existing.example.com" in exported.text
+    assert "https://one.example.com" not in exported.text
+    assert "https://two.example.com" not in exported.text
+
+
+@pytest.mark.asyncio
 async def test_public_bookmark_export_requires_opt_in_and_filters_private_links(
     client: AsyncClient,
 ) -> None:

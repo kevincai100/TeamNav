@@ -7,7 +7,12 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: process.env.CI ? "github" : "list",
-  use: { baseURL: "http://127.0.0.1:3011", trace: "on-first-retry", screenshot: "only-on-failure" },
+  use: {
+    baseURL: "http://127.0.0.1:3011",
+    locale: "zh-CN",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+  },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     { command: "node scripts/start-e2e-api.mjs", url: "http://127.0.0.1:8011/health/ready", timeout: 120_000, reuseExistingServer: false },

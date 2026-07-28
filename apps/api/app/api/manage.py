@@ -19,6 +19,7 @@ from app.schemas import (
     DeleteSite,
     ImportRequest,
     LinkCreate,
+    LinkOrganizeItem,
     LinkUpdate,
     ReorderItem,
     SessionCreate,
@@ -95,6 +96,8 @@ async def authorized_site(
 def management_error(error: Exception) -> HTTPException:
     if isinstance(error, ResourceNotFoundError):
         return HTTPException(status_code=404, detail={"code": str(error)})
+    if isinstance(error, SiteLimitError):
+        return HTTPException(status_code=409, detail=error.detail)
     return HTTPException(status_code=409, detail={"code": str(error)})
 
 
@@ -269,6 +272,21 @@ async def create_link(
         raise management_error(error) from error
 
 
+@router.put("/{slug}/links/organize", status_code=204)
+async def organize_links(
+    slug: str,
+    items: list[LinkOrganizeItem],
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> None:
+    site = await authorized_site(slug, request, session, settings, mutation=True)
+    try:
+        await SiteManager(session, settings, site).organize_links(items)
+    except ResourceNotFoundError as error:
+        raise management_error(error) from error
+
+
 @router.patch("/{slug}/links/{link_id}")
 async def update_link(
     slug: str,
@@ -373,25 +391,14 @@ async def import_bookmarks(
     settings: Settings = Depends(settings_from_request),
 ) -> dict[str, int]:
     site = await authorized_site(slug, request, session, settings, mutation=True)
-    if data.mode == "replace":
-        await session.execute(delete(Category).where(Category.site_id == site.id))
-        await session.flush()
+    categories = BookmarkCodec.parse(data.html)
     manager = SiteManager(session, settings, site)
-    imported_categories = 0
-    imported_links = 0
-    for category_data in BookmarkCodec.parse(data.html):
-        category = await manager.create_category(CategoryCreate(name=category_data.name))
-        imported_categories += 1
-        for link_data in category_data.links:
-            await manager.create_link(
-                LinkCreate(
-                    category_id=category.id,
-                    name=link_data.name,
-                    url=link_data.url,
-                    tags=link_data.tags,
-                )
-            )
-            imported_links += 1
+    try:
+        imported_categories, imported_links = await manager.import_bookmarks(
+            categories, data.mode
+        )
+    except SiteLimitError as error:
+        raise management_error(error) from error
     return {
         "imported_categories": imported_categories,
         "imported_links": imported_links,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { faviconUrl, reorderItems } from "./navigation";
+import { faviconUrl, moveLinkBetweenCategories, reorderItems } from "./navigation";
 
 describe("faviconUrl", () => {
   it("uses the origin favicon for HTTP links only", () => {
@@ -26,5 +26,37 @@ describe("reorderItems", () => {
       ["b", 2],
     ]);
     expect(original.map((item) => item.id)).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("moveLinkBetweenCategories", () => {
+  it("moves a link before the drop target and reindexes both categories", () => {
+    const categories = [
+      {
+        id: "source",
+        sort_order: 0,
+        links: [
+          { id: "a", category_id: "source", sort_order: 0 },
+          { id: "b", category_id: "source", sort_order: 1 },
+        ],
+      },
+      {
+        id: "target",
+        sort_order: 1,
+        links: [
+          { id: "c", category_id: "target", sort_order: 0 },
+          { id: "d", category_id: "target", sort_order: 1 },
+        ],
+      },
+    ];
+
+    const result = moveLinkBetweenCategories(categories, "b", "target", "d");
+
+    expect(result[0].links).toEqual([{ id: "a", category_id: "source", sort_order: 0 }]);
+    expect(result[1].links).toEqual([
+      { id: "c", category_id: "target", sort_order: 0 },
+      { id: "b", category_id: "target", sort_order: 1 },
+      { id: "d", category_id: "target", sort_order: 2 },
+    ]);
   });
 });

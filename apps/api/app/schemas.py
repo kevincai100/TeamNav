@@ -139,6 +139,10 @@ class ReorderItem(BaseModel):
     sort_order: int = Field(ge=0)
 
 
+class LinkOrganizeItem(ReorderItem):
+    category_id: str
+
+
 class BatchLinks(BaseModel):
     lines: str = Field(min_length=1, max_length=100_000)
     category_id: str

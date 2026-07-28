@@ -65,9 +65,11 @@
 .search-wrap .search-input:focus { border-color: var(--nav-accent); box-shadow: 0 0 0 3px var(--nav-accent-soft); }
 .result-count { position: absolute; right: 44px; color: var(--nav-muted); font-size: 12px; }
 .clear-search { position: absolute; right: 10px; width: 30px; height: 30px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: var(--nav-muted); }
-.category-tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 30px; padding: 4px; border: 1px solid var(--nav-line); border-radius: 8px; background: var(--nav-surface); scrollbar-width: none; }
+.category-tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 30px; padding: 4px; border: 1px solid var(--nav-line); border-radius: 8px; background: var(--nav-surface); cursor: grab; overscroll-behavior-inline: contain; scrollbar-width: none; touch-action: pan-x; user-select: none; }
+.category-tabs.is-scrolling { cursor: grabbing; }
 .category-tabs::-webkit-scrollbar { display: none; }
-.category-tabs button { flex: 0 0 auto; min-height: 36px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--nav-muted); font-size: 13px; }
+.category-tabs button { flex: 0 0 auto; min-height: 36px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--nav-muted); cursor: pointer; font-size: 13px; }
+.category-tabs.is-scrolling button { cursor: grabbing; }
 .category-tabs button.active { background: var(--nav-accent-soft); color: var(--nav-accent); font-weight: 750; }
 .category-list { display: grid; gap: 36px; }
 .category-heading { min-height: 42px; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 11px; margin-bottom: 13px; }

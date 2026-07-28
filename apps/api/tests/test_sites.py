@@ -132,6 +132,67 @@ async def test_owner_can_manage_categories_and_links(client: AsyncClient) -> Non
 
 
 @pytest.mark.asyncio
+async def test_owner_can_move_and_reorder_links_in_one_request(client: AsyncClient) -> None:
+    slug, csrf = await create_managed_site(client, "Bookmark organizer")
+    headers = {"X-CSRF-Token": csrf}
+    source = (
+        await client.post(
+            f"/api/v1/manage/sites/{slug}/categories",
+            headers=headers,
+            json={"name": "Source"},
+        )
+    ).json()
+    target = (
+        await client.post(
+            f"/api/v1/manage/sites/{slug}/categories",
+            headers=headers,
+            json={"name": "Target"},
+        )
+    ).json()
+    assert source["sort_order"] == 0
+    assert target["sort_order"] == 1
+
+    async def create_link(category_id: str, name: str) -> dict:
+        response = await client.post(
+            f"/api/v1/manage/sites/{slug}/links",
+            headers=headers,
+            json={
+                "category_id": category_id,
+                "name": name,
+                "url": f"https://{name.lower()}.example.com",
+            },
+        )
+        assert response.status_code == 201
+        return response.json()
+
+    first = await create_link(source["id"], "First")
+    moved = await create_link(source["id"], "Moved")
+    target_first = await create_link(target["id"], "TargetFirst")
+    assert first["sort_order"] == 0
+    assert moved["sort_order"] == 1
+    assert target_first["sort_order"] == 0
+
+    organized = await client.put(
+        f"/api/v1/manage/sites/{slug}/links/organize",
+        headers=headers,
+        json=[
+            {"id": first["id"], "category_id": source["id"], "sort_order": 0},
+            {"id": target_first["id"], "category_id": target["id"], "sort_order": 0},
+            {"id": moved["id"], "category_id": target["id"], "sort_order": 1},
+        ],
+    )
+
+    assert organized.status_code == 204
+    refreshed = (await client.get(f"/api/v1/manage/sites/{slug}")).json()
+    by_name = {category["name"]: category for category in refreshed["categories"]}
+    assert [link["name"] for link in by_name["Source"]["links"]] == ["First"]
+    assert [link["name"] for link in by_name["Target"]["links"]] == [
+        "TargetFirst",
+        "Moved",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_password_protected_site_requires_unlock(client: AsyncClient) -> None:
     created = (
         await client.post(

@@ -52,7 +52,7 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   const linkRow = page.locator(".manage-link").filter({ hasText: "Team Portal" });
   await expect(linkRow).toBeVisible();
   await linkRow.getByTitle("编辑").click();
-  const modal = page.locator(".modal").filter({ hasText: "编辑链接" });
+  const modal = page.locator(".modal").filter({ hasText: "编辑书签" });
   await modal.locator("input").nth(0).fill("Engineering Portal");
   await modal.getByRole("button", { name: "保存链接" }).click();
   await expect(page.locator(".manage-link").filter({ hasText: "Engineering Portal" })).toBeVisible();
@@ -84,7 +84,7 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   await expect(publicPage.getByText("Resource 12", { exact: true })).toBeVisible();
   await expect(publicPage.locator(".category-toggle")).toHaveCount(0);
   await publicSearch.fill("");
-  await publicPage.getByRole("button", { name: "Engineering", exact: true }).click();
+  await publicPage.getByRole("tab", { name: "Engineering", exact: true }).click();
   await expect(publicPage.getByText("Resource 12", { exact: true })).toBeVisible();
   await expect(publicPage.locator(".category-toggle")).toHaveCount(0);
   await publicPage.close();
@@ -95,7 +95,7 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   await page.getByRole("button", { name: "轮换私密编辑链接" }).click();
   const newManageUrl = await page.locator(".rotated-url").textContent();
   expect(newManageUrl).toContain("?key=");
-  const freshContext = await browser.newContext();
+  const freshContext = await browser.newContext({ locale: "zh-CN" });
   const verificationPage = await freshContext.newPage();
   await verificationPage.goto(oldManageUrl!);
   await expect(verificationPage.getByText("无法进入管理模式")).toBeVisible();
@@ -125,7 +125,7 @@ test("owner can let anonymous visitors export public bookmarks", async ({ page, 
   await page.getByRole("button", { name: "保存访问设置" }).click();
   await expect(page.getByText("站点设置已保存")).toBeVisible();
 
-  const visitorContext = await browser.newContext({ acceptDownloads: true });
+  const visitorContext = await browser.newContext({ acceptDownloads: true, locale: "zh-CN" });
   const visitorPage = await visitorContext.newPage();
   await visitorPage.setViewportSize({ width: 390, height: 844 });
   await visitorPage.goto(`/s/${slug}`);

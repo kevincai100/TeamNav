@@ -7,11 +7,12 @@ TeamNav is a self-hosted, shareable navigation homepage for individuals and team
 - Anonymous or account-based site creation with seven templates, light/dark themes and optional public access passwords
 - Separate public and management capability links, QR sharing and downloadable recovery files
 - Optional email accounts with workspace ownership, existing-site claiming and cross-device management
-- Responsive public navigation with local search, category filters, favicons, click tracking and copy actions
+- Responsive public navigation with local search, draggable category filters, favicons, click tracking and copy actions
 - Workspace-level personalization for brand color, light/dark mode, canvas, card style, width, columns, density and content visibility
 - HttpOnly management sessions with CSRF protection
-- Site, category and link editing, drag-and-drop ordering, optional batch tags and live preview
-- Edit-key rotation, JSON/browser-bookmark import/export, cloning and basic daily statistics
+- Site, category and link editing, collapsible folders, cross-folder drag-and-drop, optional batch tags and live preview
+- Atomic JSON/browser-bookmark import/export with actionable capacity errors, cloning and basic daily statistics
+- Automatic Chinese/English interface selection with a saved manual override
 - CAPTCHA, abuse reporting, admin report processing and site blocking
 - One-image SQLite deployment, or split SQLite, PostgreSQL and MySQL stacks with automatic migrations
 
@@ -66,6 +67,9 @@ docker compose -f docker-compose.aio.yml up -d
 
 The site is available at `http://localhost:3000`. Only one application container is created. To use
 an external PostgreSQL or MySQL server, set `DATABASE_URL` before starting the same AIO stack.
+
+Each workspace supports 200 folders and 2,000 bookmarks by default. Override
+`MAX_CATEGORIES_PER_SITE` and `MAX_LINKS_PER_SITE` when a deployment needs different limits.
 
 The equivalent direct Docker command is:
 

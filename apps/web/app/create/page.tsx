@@ -7,24 +7,27 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { api, ApiError } from "@/lib/api";
 import type { CreateResult } from "@/lib/types";
+import { useI18n } from "@/components/locale-provider";
 
-const schema = z.object({
-  name: z.string().trim().min(1, "请输入站点名称").max(80, "最多 80 个字符"),
-  description: z.string().trim().max(300, "最多 300 个字符"),
-  icon: z.string().trim().min(1).max(8),
-  template_id: z.string(),
-  theme: z.enum(["light", "dark", "system"]),
-  access_password: z.string().min(6, "密码至少 6 位").max(128).or(z.literal("")),
-});
+function createSchema(t: (message: string, values?: Record<string, string | number>) => string) {
+  return z.object({
+    name: z.string().trim().min(1, t("请输入站点名称")).max(80, t("最多 {count} 个字符", { count: 80 })),
+    description: z.string().trim().max(300, t("最多 {count} 个字符", { count: 300 })),
+    icon: z.string().trim().min(1).max(8),
+    template_id: z.string(),
+    theme: z.enum(["light", "dark", "system"]),
+    access_password: z.string().min(6, t("密码至少 {count} 位", { count: 6 })).max(128).or(z.literal("")),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof createSchema>>;
 
 const templates = [
   { id: "blank", name: "空白", icon: PackageOpen },
@@ -37,6 +40,8 @@ const templates = [
 ];
 
 export default function CreatePage() {
+  const { t } = useI18n();
+  const schema = useMemo(() => createSchema(t), [t]);
   const [result, setResult] = useState<CreateResult | null>(null);
   const [saved, setSaved] = useState(false);
   const [captcha, setCaptcha] = useState<{ required: boolean; prompt: string; token: string } | null>(null);
@@ -78,13 +83,13 @@ export default function CreatePage() {
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "REQUEST_FAILED";
       if (code.startsWith("CAPTCHA_")) await loadCaptcha();
-      toast.error(code === "CREATE_RATE_LIMITED" ? "创建过于频繁，请稍后再试" : "创建失败，请检查 API 服务");
+      toast.error(t(code === "CREATE_RATE_LIMITED" ? "创建过于频繁，请稍后再试" : "创建失败，请检查 API 服务"));
     }
   }
 
   async function copy(value: string, label: string) {
     await navigator.clipboard.writeText(value);
-    toast.success(`${label}已复制`);
+    toast.success(t("{label}已复制", { label }));
   }
 
   function downloadRecovery() {
@@ -102,34 +107,34 @@ export default function CreatePage() {
     return (
       <main className="compact-shell create-result">
         <div className="success-mark"><Check size={28} /></div>
-        <span className="eyebrow">创建完成</span>
-        <h1>{result.site.name} 已就绪</h1>
-        <p className="muted">公开链接用于团队浏览，私密链接只用于维护。请勿把两者发到同一个群聊。</p>
+        <span className="eyebrow">{t("创建完成")}</span>
+        <h1>{t("{name} 已就绪", { name: result.site.name })}</h1>
+        <p className="muted">{t("公开链接用于团队浏览，私密链接只用于维护。请勿把两者发到同一个群聊。")}</p>
 
         <section className="result-row public-link-row">
-          <div><span className="result-label">公开访问链接</span><code>{result.public_url}</code></div>
-          <button className="icon-button" onClick={() => copy(result.public_url, "公开链接")} title="复制公开链接"><Copy size={17} /></button>
+          <div><span className="result-label">{t("公开访问链接")}</span><code>{result.public_url}</code></div>
+          <button className="icon-button" onClick={() => copy(result.public_url, t("公开链接"))} title={t("复制公开链接")}><Copy size={17} /></button>
         </section>
 
         <section className="result-secret">
-          <div className="secret-heading"><KeyRound size={19} /><strong>私密编辑链接</strong></div>
+          <div className="secret-heading"><KeyRound size={19} /><strong>{t("私密编辑链接")}</strong></div>
           <code>{result.manage_url}</code>
           <div className="secret-actions">
-            <button className="button secondary" onClick={() => copy(result.manage_url, "编辑链接")}><Copy size={16} /> 复制</button>
-            <button className="button secondary" onClick={downloadRecovery}><Download size={16} /> 恢复文件</button>
+            <button className="button secondary" onClick={() => copy(result.manage_url, t("编辑链接"))}><Copy size={16} /> {t("复制")}</button>
+            <button className="button secondary" onClick={downloadRecovery}><Download size={16} /> {t("恢复文件")}</button>
           </div>
-          <p>编辑链接相当于管理员密码，丢失后无法通过账号找回。</p>
+          <p>{t("编辑链接相当于管理员密码，丢失后无法通过账号找回。")}</p>
         </section>
 
         <div className="result-share">
           <QRCodeSVG value={result.public_url} size={148} bgColor="transparent" />
-          <div><strong>扫码打开公开导航</strong><p className="muted">适合发到微信、Slack 或 Teams。</p><button className="button ghost" onClick={() => copy(`团队导航：${result.public_url}`, "分享文案")}><Copy size={16} /> 复制分享文案</button></div>
+          <div><strong>{t("扫码打开公开导航")}</strong><p className="muted">{t("适合发到微信、Slack 或 Teams。")}</p><button className="button ghost" onClick={() => copy(t("团队导航：{url}", { url: result.public_url }), t("分享文案"))}><Copy size={16} /> {t("复制分享文案")}</button></div>
         </div>
 
-        <label className="save-confirm"><input type="checkbox" checked={saved} onChange={(event) => setSaved(event.target.checked)} /><span><ShieldCheck size={18} /> 我已经保存私密编辑链接或恢复文件</span></label>
+        <label className="save-confirm"><input type="checkbox" checked={saved} onChange={(event) => setSaved(event.target.checked)} /><span><ShieldCheck size={18} /> {t("我已经保存私密编辑链接或恢复文件")}</span></label>
         <div className="result-actions">
-          <Link data-testid="manage-link" className={`button ${!saved ? "disabled-link" : ""}`} aria-disabled={!saved} tabIndex={saved ? 0 : -1} href={saved ? result.manage_url : "#"}>进入管理页 <ExternalLink size={16} /></Link>
-          <Link className="button secondary" href={`/s/${result.site.public_slug}`}>查看公开页</Link>
+          <Link data-testid="manage-link" className={`button ${!saved ? "disabled-link" : ""}`} aria-disabled={!saved} tabIndex={saved ? 0 : -1} href={saved ? result.manage_url : "#"}>{t("进入管理页")} <ExternalLink size={16} /></Link>
+          <Link className="button secondary" href={`/s/${result.site.public_slug}`}>{t("查看公开页")}</Link>
         </div>
       </main>
     );
@@ -137,33 +142,33 @@ export default function CreatePage() {
 
   return (
     <main className="compact-shell create-page">
-      <span className="eyebrow">创建工作台</span>
-      <h1>从一个清晰的入口开始。</h1>
-      <p className="muted">先确定内容骨架，创建后可以继续调整品牌色、布局和卡片样式。</p>
+      <span className="eyebrow">{t("创建工作台")}</span>
+      <h1>{t("从一个清晰的入口开始。")}</h1>
+      <p className="muted">{t("先确定内容骨架，创建后可以继续调整品牌色、布局和卡片样式。")}</p>
       <form className="panel create-form" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="panel-body form-grid">
-          {captcha?.required && <div className="field span-2 captcha-field"><label htmlFor="captcha-answer">人机验证：{captcha.prompt}</label><div><input id="captcha-answer" inputMode="numeric" autoComplete="off" required value={captchaAnswer} onChange={(event) => setCaptchaAnswer(event.target.value)} /><button type="button" className="button secondary" onClick={() => void loadCaptcha()}>换一题</button></div></div>}
-          <div className="field span-2"><label htmlFor="name">站点名称 *</label><input id="name" placeholder="例如：售后团队工作台" {...form.register("name")} />{form.formState.errors.name && <span className="field-error">{form.formState.errors.name.message}</span>}</div>
-          <div className="field span-2"><label htmlFor="description">站点描述</label><textarea id="description" placeholder="这个导航页服务于哪些人？" {...form.register("description")} /></div>
-          <div className="field span-2 icon-field"><label htmlFor="icon">站点图标</label><input id="icon" {...form.register("icon")} /></div>
+          {captcha?.required && <div className="field span-2 captcha-field"><label htmlFor="captcha-answer">{t("人机验证：{prompt}", { prompt: captcha.prompt })}</label><div><input id="captcha-answer" inputMode="numeric" autoComplete="off" required value={captchaAnswer} onChange={(event) => setCaptchaAnswer(event.target.value)} /><button type="button" className="button secondary" onClick={() => void loadCaptcha()}>{t("换一题")}</button></div></div>}
+          <div className="field span-2"><label htmlFor="name">{t("站点名称 *")}</label><input id="name" placeholder={t("例如：售后团队工作台")} {...form.register("name")} />{form.formState.errors.name && <span className="field-error">{form.formState.errors.name.message}</span>}</div>
+          <div className="field span-2"><label htmlFor="description">{t("站点描述")}</label><textarea id="description" placeholder={t("这个导航页服务于哪些人？")} {...form.register("description")} /></div>
+          <div className="field span-2 icon-field"><label htmlFor="icon">{t("站点图标")}</label><input id="icon" {...form.register("icon")} /></div>
           <fieldset className="template-picker span-2">
-            <legend>起步模板</legend>
+            <legend>{t("起步模板")}</legend>
             <input type="hidden" {...form.register("template_id")} />
-            <div className="template-grid" role="radiogroup" aria-label="起步模板">
+            <div className="template-grid" role="radiogroup" aria-label={t("起步模板")}>
               {templates.map((template) => {
                 const Icon = template.icon;
-                return <button type="button" role="radio" aria-checked={selectedTemplate === template.id} className={selectedTemplate === template.id ? "active" : ""} key={template.id} onClick={() => form.setValue("template_id", template.id)}><Icon size={18} /><span>{template.name}</span>{selectedTemplate === template.id && <Check size={14} />}</button>;
+                return <button type="button" role="radio" aria-checked={selectedTemplate === template.id} className={selectedTemplate === template.id ? "active" : ""} key={template.id} onClick={() => form.setValue("template_id", template.id)}><Icon size={18} /><span>{t(template.name)}</span>{selectedTemplate === template.id && <Check size={14} />}</button>;
               })}
             </div>
           </fieldset>
           <fieldset className="theme-picker span-2">
-            <legend>初始主题</legend>
+            <legend>{t("初始主题")}</legend>
             <input type="hidden" {...form.register("theme")} />
-            <div className="segmented create-theme" role="radiogroup" aria-label="初始主题"><button type="button" role="radio" aria-checked={selectedTheme === "light"} className={selectedTheme === "light" ? "active" : ""} onClick={() => form.setValue("theme", "light")}>浅色</button><button type="button" role="radio" aria-checked={selectedTheme === "dark"} className={selectedTheme === "dark" ? "active" : ""} onClick={() => form.setValue("theme", "dark")}>深色</button><button type="button" role="radio" aria-checked={selectedTheme === "system"} className={selectedTheme === "system" ? "active" : ""} onClick={() => form.setValue("theme", "system")}>跟随系统</button></div>
+            <div className="segmented create-theme" role="radiogroup" aria-label={t("初始主题")}><button type="button" role="radio" aria-checked={selectedTheme === "light"} className={selectedTheme === "light" ? "active" : ""} onClick={() => form.setValue("theme", "light")}>{t("浅色")}</button><button type="button" role="radio" aria-checked={selectedTheme === "dark"} className={selectedTheme === "dark" ? "active" : ""} onClick={() => form.setValue("theme", "dark")}>{t("深色")}</button><button type="button" role="radio" aria-checked={selectedTheme === "system"} className={selectedTheme === "system" ? "active" : ""} onClick={() => form.setValue("theme", "system")}>{t("跟随系统")}</button></div>
           </fieldset>
-          <div className="field span-2"><label htmlFor="password">访问密码（可选）</label><input id="password" type="password" autoComplete="new-password" placeholder="团队成员访问前需要输入" {...form.register("access_password")} />{form.formState.errors.access_password && <span className="field-error">{form.formState.errors.access_password.message}</span>}</div>
+          <div className="field span-2"><label htmlFor="password">{t("访问密码（可选）")}</label><input id="password" type="password" autoComplete="new-password" placeholder={t("团队成员访问前需要输入")} {...form.register("access_password")} />{form.formState.errors.access_password && <span className="field-error">{form.formState.errors.access_password.message}</span>}</div>
         </div>
-        <div className="create-submit"><span>无需邮箱或账号</span><button className="button" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? "正在创建…" : "创建导航站"}</button></div>
+        <div className="create-submit"><span>{t("无需邮箱或账号")}</span><button className="button" disabled={form.formState.isSubmitting}>{t(form.formState.isSubmitting ? "正在创建…" : "创建导航站")}</button></div>
       </form>
     </main>
   );

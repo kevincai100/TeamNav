@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     account_session_days: int = Field(default=30, ge=1, le=365)
     max_sites_per_ip_per_hour: int = Field(default=5, ge=1)
     max_sites_per_ip_per_day: int = Field(default=20, ge=1)
-    max_categories_per_site: int = Field(default=30, ge=1)
-    max_links_per_site: int = Field(default=500, ge=1)
+    max_categories_per_site: int = Field(default=200, ge=1)
+    max_links_per_site: int = Field(default=2_000, ge=1)
     default_noindex: bool = True
     cookie_secure: bool = False
     cors_origins: str = "http://localhost:3000"
