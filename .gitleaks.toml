@@ -1,0 +1,15 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Deterministic non-production keys used by tests and CI"
+condition = "AND"
+paths = [
+  '''^\.github/workflows/ci\.yml$''',
+  '''^apps/api/tests/conftest\.py$''',
+  '''^scripts/start-e2e-api\.mjs$''',
+]
+regexTarget = "match"
+regexes = [
+  '''(?:test|e2e|ci)-(?:secret-key|admin-token)-with-at-least-32-characters''',
+]

@@ -1,5 +1,7 @@
 # TeamNav
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 TeamNav is a self-hosted, shareable navigation homepage for individuals and teams. Creating a site produces a public link and a separate unguessable management link. Accounts are optional and can synchronize multiple workspaces.
 
 ## Features
@@ -123,6 +125,29 @@ docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --build
 
 To use an external PostgreSQL or MySQL server, set `DATABASE_URL` in `.env` and use the lightweight base command; the SQLite volume remains mounted but is unused. Examples are provided in `.env.example`. Database tables are migrated automatically whenever the API container starts.
 
+### Build images from source
+
+Clone the repository, create `.env` from `.env.example`, and build the all-in-one image locally:
+
+```bash
+git clone https://github.com/kevincai100/TeamNav.git
+cd TeamNav
+cp .env.example .env
+docker compose -f docker-compose.aio.yml build --pull
+docker compose -f docker-compose.aio.yml up -d
+```
+
+To build the split web and API images instead:
+
+```bash
+docker compose build --pull
+docker compose up -d
+```
+
+Images built from `main` are published as both `main` and `latest`. Version tags such as `v0.1.0`
+also publish immutable semantic-version tags. Production deployments can pin `TEAMNAV_VERSION` to a
+specific version rather than following `latest`.
+
 For internet deployments, use TLS, set `APP_URL` and `CORS_ORIGINS` to the public gateway origin,
 and set `COOKIE_SECURE=true`. `NEXT_PUBLIC_API_URL` should remain empty for the portable same-origin
 image. Detailed upgrade, backup and restore steps are in [operations](docs/operations.md).
@@ -144,3 +169,19 @@ cd apps/api
 ## MVP scope notes
 
 The current MVP includes anonymous and account-based ownership, public sharing, management, protection, moderation, import/export, statistics and self-hosting. Organizations, simultaneous editing, SSO, subscriptions and custom domains remain outside scope.
+
+## Contributing and security
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+Please report vulnerabilities privately through GitHub Security Advisories as described in
+[SECURITY.md](SECURITY.md), rather than in a public issue.
+Every push and pull request is scanned for committed secrets before container images can be published.
+
+## License and branding
+
+TeamNav source code is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE).
+If you run a modified version as a network service, the AGPL requires you to offer its corresponding
+source code to the users of that service. The TeamNav name and branding are not granted under the
+software license; see [TRADEMARKS.md](TRADEMARKS.md).
+
+Copyright (C) 2026 TeamNav contributors.
