@@ -153,6 +153,7 @@ const english: Record<string, string> = {
   "书签导出失败，请稍后重试": "Bookmark export failed. Try again later.",
   "共享工作台": "Shared workspace",
   "工作台摘要": "Workspace summary",
+  "置顶入口": "Pinned shortcuts",
   "{count} 个分组": "{count} groups",
   "搜索导航链接": "Search workspace links",
   "清除搜索": "Clear search",

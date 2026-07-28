@@ -24,6 +24,10 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
   );
   const visibleCount = categories.reduce((total, category) => total + category.links.length, 0);
   const totalCount = site.categories.reduce((total, category) => total + category.links.length, 0);
+  const pinnedLinks = useMemo(
+    () => site.categories.flatMap((category) => category.links).filter((link) => link.is_pinned).slice(0, 5),
+    [site.categories],
+  );
   const revealAllCategories = query.trim().length > 0 || categoryId !== null;
   const layout = normalizeLayoutConfig(site.layout_config);
   const wallpaperStyle = getWallpaperStyle(layout);
@@ -119,52 +123,102 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
           <CategoryTabs categories={site.categories} activeId={categoryId} allLabel={t("全部")} ariaLabel={t("分类筛选")} onSelect={setCategoryId} />
         )}
 
-        <div className="category-list">
-          {categories.map((category) => {
-            const display = getCategoryDisplay(category.links, {
-              expanded: expandedCategoryIds.has(category.id),
-              revealAll: revealAllCategories,
-            });
-            const linkGridId = `category-links-${category.id}`;
-            return (
-              <section className="nav-category" key={category.id}>
-                <div className="category-heading">
-                  <span className="category-icon" aria-hidden="true">{category.icon}</span>
-                  <div><h2>{category.name}</h2>{category.description && <p>{category.description}</p>}</div>
-                  <span className="category-count">{category.links.length}</span>
-                </div>
-                <div className="link-grid" id={linkGridId}>
-                  {display.links.map((link) => (
-                    <article className="link-card" key={link.id}>
-                      <a href={preview ? undefined : link.url} target={link.open_mode === "new" ? "_blank" : "_self"} rel="noopener noreferrer" onClick={(event) => { if (preview) event.preventDefault(); else trackClick(link.id); }}>
-                        <LinkIcon url={link.url} fallback={link.icon} />
-                        <span className="link-content">
-                          <span className="link-name">{link.name}{link.is_pinned && <Pin size={12} />}</span>
-                          {site.display_config.show_descriptions !== false && link.description && <span className="link-description">{link.description}</span>}
-                          {site.display_config.show_tags !== false && link.tags.length > 0 && <span className="link-tags">{link.tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>)}</span>}
-                        </span>
-                        <ExternalLink className="link-arrow" size={16} aria-hidden="true" />
-                      </a>
-                      {!preview && <button className="copy-link" onClick={() => copyLink(link.url)} title={t("复制链接")} aria-label={t("复制 {name} 链接", { name: link.name })}><Copy size={15} /></button>}
-                    </article>
+        <div className={`nav-workspace ${site.categories.length > 1 ? "has-category-rail" : ""}`}>
+          {site.categories.length > 1 && (
+            <nav className="nav-category-rail" aria-label={t("分类筛选")}>
+              <div className="category-rail-list" role="tablist" aria-label={t("分类筛选")}>
+                <button type="button" role="tab" aria-label={t("全部")} aria-selected={categoryId === null} className={categoryId === null ? "active" : ""} onClick={() => setCategoryId(null)}>
+                  <span className="category-rail-icon" aria-hidden="true">#</span>
+                  <span>{t("全部")}</span>
+                  <strong aria-hidden="true">{totalCount}</strong>
+                </button>
+                {site.categories.map((category) => (
+                  <button type="button" role="tab" aria-label={category.name} aria-selected={categoryId === category.id} className={categoryId === category.id ? "active" : ""} key={category.id} onClick={() => setCategoryId(category.id)}>
+                    <span className="category-rail-icon" aria-hidden="true">{category.icon}</span>
+                    <span>{category.name}</span>
+                    <strong aria-hidden="true">{category.links.length}</strong>
+                  </button>
+                ))}
+              </div>
+            </nav>
+          )}
+
+          <div className="category-list">
+            {categories.map((category) => {
+              const display = getCategoryDisplay(category.links, {
+                expanded: expandedCategoryIds.has(category.id),
+                revealAll: revealAllCategories,
+              });
+              const linkGridId = `category-links-${category.id}`;
+              const sectionWide = categories.length === 1 || display.links.length > 2 || revealAllCategories;
+              const categoryColumns = sectionWide
+                ? Math.min(layout.columns, Math.max(display.links.length, 1))
+                : 1;
+              return (
+                <section className={`nav-category ${sectionWide ? "nav-category-wide" : ""}`} key={category.id}>
+                  <div className="category-heading">
+                    <span className="category-icon" aria-hidden="true">{category.icon}</span>
+                    <div><h2>{category.name}</h2>{category.description && <p>{category.description}</p>}</div>
+                    <span className="category-count">{category.links.length}</span>
+                  </div>
+                  <div className="link-grid" id={linkGridId} style={{ "--category-columns": categoryColumns } as CSSProperties}>
+                    {display.links.map((link) => (
+                      <article className="link-card" key={link.id}>
+                        <a href={preview ? undefined : link.url} target={link.open_mode === "new" ? "_blank" : "_self"} rel="noopener noreferrer" onClick={(event) => { if (preview) event.preventDefault(); else trackClick(link.id); }}>
+                          <LinkIcon url={link.url} fallback={link.icon} />
+                          <span className="link-content">
+                            <span className="link-name">{link.name}{link.is_pinned && <Pin size={12} />}</span>
+                            {site.display_config.show_descriptions !== false && link.description && <span className="link-description">{link.description}</span>}
+                            {site.display_config.show_tags !== false && link.tags.length > 0 && <span className="link-tags">{link.tags.slice(0, 3).map((tag) => <span key={tag}>{tag}</span>)}</span>}
+                          </span>
+                          <ExternalLink className="link-arrow" size={16} aria-hidden="true" />
+                        </a>
+                        {!preview && <button className="copy-link" onClick={() => copyLink(link.url)} title={t("复制链接")} aria-label={t("复制 {name} 链接", { name: link.name })}><Copy size={15} /></button>}
+                      </article>
+                    ))}
+                  </div>
+                  {display.toggle && (
+                    <button
+                      type="button"
+                      className="category-toggle"
+                      aria-controls={linkGridId}
+                      aria-expanded={display.toggle === "collapse"}
+                      onClick={() => toggleCategory(category.id)}
+                    >
+                      {display.toggle === "expand" ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                      {display.toggle === "expand" ? t("展开其余 {count} 个", { count: display.hiddenCount }) : t("收起")}
+                    </button>
+                  )}
+                </section>
+              );
+            })}
+            {visibleCount === 0 && <div className="empty-search"><Search size={24} /><p>{t("没有找到匹配的链接")}</p></div>}
+          </div>
+
+          <aside className="nav-quick-panel" aria-label={t("工作台摘要")}>
+            {pinnedLinks.length > 0 && (
+              <section className="quick-panel-section">
+                <h2><Pin size={14} />{t("置顶入口")}</h2>
+                <div className="quick-link-list">
+                  {pinnedLinks.map((link) => (
+                    <a className="quick-link" href={preview ? undefined : link.url} target={link.open_mode === "new" ? "_blank" : "_self"} rel="noopener noreferrer" key={link.id} onClick={(event) => { if (preview) event.preventDefault(); else trackClick(link.id); }}>
+                      <LinkIcon url={link.url} fallback={link.icon} />
+                      <span>{link.name}</span>
+                      <ExternalLink size={13} aria-hidden="true" />
+                    </a>
                   ))}
                 </div>
-                {display.toggle && (
-                  <button
-                    type="button"
-                    className="category-toggle"
-                    aria-controls={linkGridId}
-                    aria-expanded={display.toggle === "collapse"}
-                    onClick={() => toggleCategory(category.id)}
-                  >
-                    {display.toggle === "expand" ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-                    {display.toggle === "expand" ? t("展开其余 {count} 个", { count: display.hiddenCount }) : t("收起")}
-                  </button>
-                )}
               </section>
-            );
-          })}
-          {visibleCount === 0 && <div className="empty-search"><Search size={24} /><p>{t("没有找到匹配的链接")}</p></div>}
+            )}
+            <section className="quick-panel-section">
+              <h2>{t("工作台摘要")}</h2>
+              <div className="quick-summary">
+                <div><strong>{totalCount}</strong><span>{t("{count} 个常用入口", { count: "" }).trim()}</span></div>
+                <div><strong>{site.categories.length}</strong><span>{t("{count} 个分组", { count: "" }).trim()}</span></div>
+              </div>
+              {site.display_config.show_updated_at !== false && <p className="quick-updated">{t("更新于 {date}", { date: formatDate(site.updated_at) })}</p>}
+            </section>
+          </aside>
         </div>
 
         <footer className="nav-footer">
