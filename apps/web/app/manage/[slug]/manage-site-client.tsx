@@ -2,7 +2,7 @@
 
 import {
   AlignCenter, AlignLeft, BarChart3, Copy, CopyPlus, Database, Download, Eye,
-  FileUp, ImageIcon, KeyRound, LayoutGrid, Link2, Monitor, Moon, Palette, Plus,
+  FileJson, FileUp, FolderOpen, ImageIcon, KeyRound, LayoutGrid, Link2, Monitor, Moon, Palette, Plus,
   RotateCw, Save, Settings2, ShieldCheck, Sun, Trash2, UserPlus, X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -403,8 +403,16 @@ export function ManageSiteClient({ slug }: { slug: string }) {
             <div className="editor-content form-stack">
               <div className="field"><label>{t("批量添加，每行“名称 | URL | 描述 | 标签1,标签2”")}</label><textarea value={batch} onChange={(event) => setBatch(event.target.value)} placeholder="GitHub | https://github.com | Code hosting | code,common" /></div>
               <button className="button secondary" onClick={batchAdd}>{t("批量添加到所选分类")}</button>
-              <div className="data-actions"><button className="button secondary" onClick={exportSite}><Download size={16} /> {t("导出 JSON")}</button><label className="button secondary"><FileUp size={16} /> {t("覆盖导入")}<input type="file" accept="application/json" hidden onChange={(event) => event.target.files?.[0] && importSite(event.target.files[0])} /></label></div>
-              <div className="data-actions"><button className="button secondary" onClick={exportBookmarks}><Download size={16} /> {t("导出浏览器书签")}</button><label className="button secondary"><FileUp size={16} /> {t("导入书签")}<input type="file" accept="text/html,.html" hidden onChange={(event) => event.target.files?.[0] && void importBookmarks(event.target.files[0])} /></label></div>
+              <div className="data-tools">
+                <div className="data-tool-row">
+                  <div className="data-tool-kind"><span className="data-tool-icon"><FileJson size={17} /></span><span><strong>{t("站点数据")}</strong><small>JSON</small></span></div>
+                  <div className="data-actions"><button className="button secondary" onClick={exportSite}><Download size={16} /> {t("导出 JSON")}</button><label className="button secondary"><FileUp size={16} /> {t("覆盖导入")}<input type="file" accept="application/json" hidden onChange={(event) => event.target.files?.[0] && importSite(event.target.files[0])} /></label></div>
+                </div>
+                <div className="data-tool-row">
+                  <div className="data-tool-kind"><span className="data-tool-icon"><FolderOpen size={17} /></span><span><strong>{t("浏览器书签")}</strong><small>HTML</small></span></div>
+                  <div className="data-actions"><button className="button secondary" onClick={exportBookmarks}><Download size={16} /> {t("导出浏览器书签")}</button><label className="button secondary"><FileUp size={16} /> {t("导入书签")}<input type="file" accept="text/html,.html" hidden onChange={(event) => event.target.files?.[0] && void importBookmarks(event.target.files[0])} /></label></div>
+                </div>
+              </div>
             </div>
           </details>
           </>}

@@ -59,6 +59,19 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
 
   const batchSection = page.locator("details.editor-section").filter({ hasText: "批量与数据" });
   await batchSection.locator("summary").click();
+  await expect(batchSection.locator(".data-tool-row")).toHaveCount(2);
+  await expect(batchSection.getByText("站点数据", { exact: true })).toBeVisible();
+  await expect(batchSection.getByText("浏览器书签", { exact: true })).toBeVisible();
+  await batchSection.locator('input[accept="text/html,.html"]').setInputFiles({
+    name: "bookmarks.html",
+    mimeType: "text/html",
+    buffer: Buffer.from("<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p><DT><H3>Imported Folder</H3><DL><p><DT><A HREF=\"https://example.com/imported\">Imported Link</A></DL><p></DL><p>"),
+  });
+  await expect(page.getByText("已导入 1 个书签")).toBeVisible();
+  const importedFolder = page.locator(".manage-category").filter({
+    has: page.locator('.category-name-input[value="Imported Folder"]'),
+  });
+  await expect(importedFolder.locator(".category-icon-input")).toHaveValue("📁");
   const batchLines = Array.from(
     { length: 12 },
     (_, index) => `Resource ${index + 1} | https://example.com/resource-${index + 1}`,
@@ -73,6 +86,7 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
   await expect(publicPage.locator(".nav-view")).toHaveClass(/cards-outline/);
   await expect(publicPage.locator(".nav-view")).toHaveClass(/density-compact/);
   await expect(publicPage.locator(".nav-view")).toHaveCSS("--site-accent", "#2563EB");
+  await expect(publicPage.locator(".nav-quick-panel")).toHaveCount(0);
   await expect(publicPage.getByText("Resource 12", { exact: true })).toHaveCount(0);
   await publicPage.getByRole("button", { name: "展开其余 1 个" }).click();
   await expect(publicPage.getByText("Resource 12", { exact: true })).toBeVisible();

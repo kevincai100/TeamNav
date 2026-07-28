@@ -296,6 +296,8 @@ const english: Record<string, string> = {
   "批量添加，每行“名称 | URL | 描述 | 标签1,标签2”": "Bulk add, one per line: Name | URL | Description | tag1,tag2",
   "批量添加到所选分类": "Add all to selected folder",
   "导出 JSON": "Export JSON",
+  "站点数据": "Site data",
+  "浏览器书签": "Browser bookmarks",
   "覆盖导入": "Replace import",
   "导出浏览器书签": "Export browser bookmarks",
   "导入书签": "Import bookmarks",

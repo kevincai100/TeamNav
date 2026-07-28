@@ -71,8 +71,10 @@
 .category-tabs button { flex: 0 0 auto; min-height: 36px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--nav-muted); cursor: pointer; font-size: 13px; }
 .category-tabs.is-scrolling button { cursor: grabbing; }
 .category-tabs button.active { background: var(--nav-accent-soft); color: var(--nav-accent); font-weight: 750; }
-.nav-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 244px; align-items: start; gap: 28px; }
-.nav-workspace.has-category-rail { grid-template-columns: 196px minmax(0, 1fr) 244px; }
+.nav-workspace { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 28px; }
+.nav-workspace.has-category-rail { grid-template-columns: 196px minmax(0, 1fr); }
+.nav-workspace.has-quick-panel { grid-template-columns: minmax(0, 1fr) 244px; }
+.nav-workspace.has-category-rail.has-quick-panel { grid-template-columns: 196px minmax(0, 1fr) 244px; }
 .nav-category-rail, .nav-quick-panel { position: sticky; top: 88px; min-width: 0; }
 .nav-category-rail { padding-right: 18px; border-right: 1px solid var(--nav-line); }
 .category-rail-list { display: grid; gap: 4px; }

@@ -123,7 +123,7 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
           <CategoryTabs categories={site.categories} activeId={categoryId} allLabel={t("全部")} ariaLabel={t("分类筛选")} onSelect={setCategoryId} />
         )}
 
-        <div className={`nav-workspace ${site.categories.length > 1 ? "has-category-rail" : ""}`}>
+        <div className={`nav-workspace ${site.categories.length > 1 ? "has-category-rail" : ""} ${pinnedLinks.length > 0 ? "has-quick-panel" : ""}`}>
           {site.categories.length > 1 && (
             <nav className="nav-category-rail" aria-label={t("分类筛选")}>
               <div className="category-rail-list" role="tablist" aria-label={t("分类筛选")}>
@@ -195,8 +195,8 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
             {visibleCount === 0 && <div className="empty-search"><Search size={24} /><p>{t("没有找到匹配的链接")}</p></div>}
           </div>
 
-          <aside className="nav-quick-panel" aria-label={t("工作台摘要")}>
-            {pinnedLinks.length > 0 && (
+          {pinnedLinks.length > 0 && (
+            <aside className="nav-quick-panel" aria-label={t("工作台摘要")}>
               <section className="quick-panel-section">
                 <h2><Pin size={14} />{t("置顶入口")}</h2>
                 <div className="quick-link-list">
@@ -209,16 +209,16 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
                   ))}
                 </div>
               </section>
-            )}
-            <section className="quick-panel-section">
-              <h2>{t("工作台摘要")}</h2>
-              <div className="quick-summary">
-                <div><strong>{totalCount}</strong><span>{t("{count} 个常用入口", { count: "" }).trim()}</span></div>
-                <div><strong>{site.categories.length}</strong><span>{t("{count} 个分组", { count: "" }).trim()}</span></div>
-              </div>
-              {site.display_config.show_updated_at !== false && <p className="quick-updated">{t("更新于 {date}", { date: formatDate(site.updated_at) })}</p>}
-            </section>
-          </aside>
+              <section className="quick-panel-section">
+                <h2>{t("工作台摘要")}</h2>
+                <div className="quick-summary">
+                  <div><strong>{totalCount}</strong><span>{t("{count} 个常用入口", { count: "" }).trim()}</span></div>
+                  <div><strong>{site.categories.length}</strong><span>{t("{count} 个分组", { count: "" }).trim()}</span></div>
+                </div>
+                {site.display_config.show_updated_at !== false && <p className="quick-updated">{t("更新于 {date}", { date: formatDate(site.updated_at) })}</p>}
+              </section>
+            </aside>
+          )}
         </div>
 
         <footer className="nav-footer">
