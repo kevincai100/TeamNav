@@ -30,6 +30,9 @@ class Site(Base):
     theme: Mapped[str] = mapped_column(String(16), default="light")
     layout_config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     display_config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    maintenance_config: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, default=dict, nullable=True
+    )
     edit_key_hash: Mapped[str] = mapped_column(String(64))
     access_password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     password_version: Mapped[int] = mapped_column(Integer, default=0)
@@ -50,6 +53,9 @@ class Site(Base):
         back_populates="site", cascade="all, delete-orphan"
     )
     metrics: Mapped[list["SiteMetricDaily"]] = relationship(
+        back_populates="site", cascade="all, delete-orphan"
+    )
+    revisions: Mapped[list["SiteRevision"]] = relationship(
         back_populates="site", cascade="all, delete-orphan"
     )
     owner: Mapped["User | None"] = relationship(back_populates="sites")
@@ -91,6 +97,13 @@ class Link(Base):
     is_pinned: Mapped[bool] = mapped_column(Boolean, default=False)
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     open_mode: Mapped[str] = mapped_column(String(16), default="new")
+    health_status: Mapped[str] = mapped_column(String(16), default="unchecked")
+    health_status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    health_error: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    health_checked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    health_consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
@@ -156,6 +169,19 @@ class SiteMetricDaily(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
     site: Mapped[Site] = relationship(back_populates="metrics")
+
+
+class SiteRevision(Base):
+    __tablename__ = "site_revisions"
+    __table_args__ = (Index("ix_site_revisions_site_created", "site_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    site_id: Mapped[str] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"))
+    action: Mapped[str] = mapped_column(String(64))
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+    site: Mapped[Site] = relationship(back_populates="revisions")
 
 
 class User(Base):

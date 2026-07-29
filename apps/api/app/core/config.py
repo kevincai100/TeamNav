@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     captcha_required: bool = True
     captcha_ttl_seconds: int = Field(default=300, ge=30, le=3600)
     captcha_expose_test_answer: bool = False
+    link_check_scheduler_enabled: bool = True
+    link_check_poll_seconds: int = Field(default=900, ge=60, le=86400)
+    link_check_timeout_seconds: float = Field(default=5.0, ge=0.5, le=30)
+    link_check_batch_size: int = Field(default=50, ge=1, le=200)
+    link_check_allow_private_networks: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

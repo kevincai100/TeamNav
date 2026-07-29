@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { filterCategories } from "@/lib/search";
 import { API_URL } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { getCategoryDisplay } from "@/lib/category-display";
 import { faviconUrl } from "@/lib/navigation";
 import { getWallpaperStyle, normalizeLayoutConfig } from "@/lib/personalization";
@@ -37,8 +38,12 @@ export function NavigationView({ site, preview = false }: { site: Site; preview?
   } as CSSProperties;
 
   async function copyLink(url: string) {
-    await navigator.clipboard.writeText(url);
-    toast.success(t("链接已复制"));
+    try {
+      await copyText(url);
+      toast.success(t("链接已复制"));
+    } catch {
+      toast.error(t("复制失败，请手动选择链接复制"));
+    }
   }
 
   async function downloadBookmarks() {

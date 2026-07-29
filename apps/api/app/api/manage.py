@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
@@ -9,7 +10,7 @@ from app.api.deps import settings_from_request
 from app.api.sites import get_session
 from app.core.config import Settings
 from app.core.security import generate_token, hash_password, token_digest
-from app.models import AccessSession, Category, Site
+from app.models import AccessSession, Site
 from app.schemas import (
     BatchLinks,
     BookmarkImport,
@@ -21,6 +22,8 @@ from app.schemas import (
     LinkCreate,
     LinkOrganizeItem,
     LinkUpdate,
+    MaintenanceBulkRequest,
+    MaintenanceCheckRequest,
     ReorderItem,
     SessionCreate,
     SiteUpdate,
@@ -32,17 +35,58 @@ from app.services.account_auth import (
 )
 from app.services.auth import AuthenticationError, AuthorizationError, ManageAuth
 from app.services.bookmarks import BookmarkCodec
+from app.services.maintenance import LinkMaintenanceService
 from app.services.manage import (
+    BatchLinkValidationError,
     ResourceNotFoundError,
+    SiteImportValidationError,
     SiteLimitError,
     SiteManager,
     category_payload,
     link_payload,
 )
 from app.services.metrics import MetricsRecorder
+from app.services.revisions import RevisionNotFoundError, RevisionService
 from app.services.sites import SiteDisabledError, SiteNotFoundError, SiteService
 
 router = APIRouter(prefix="/api/v1/manage/sites")
+
+
+def revision_action(request: Request, slug: str) -> str | None:
+    if request.method not in {"POST", "PATCH", "PUT", "DELETE"}:
+        return None
+    prefix = f"/api/v1/manage/sites/{slug}"
+    tail = request.url.path.removeprefix(prefix)
+    if tail in {
+        "/clone",
+        "/claim",
+        "/maintenance/check",
+        "/rotate-edit-key",
+    } or tail.endswith("/restore"):
+        return None
+    if tail == "" and request.method == "PATCH":
+        return "site_updated"
+    if tail == "/categories" and request.method == "POST":
+        return "category_created"
+    if tail == "/categories/reorder":
+        return "categories_reordered"
+    if tail.startswith("/categories/"):
+        return "category_deleted" if request.method == "DELETE" else "category_updated"
+    if tail == "/links" and request.method == "POST":
+        return "link_created"
+    if tail == "/links/batch":
+        return "links_batch_created"
+    if tail in {"/links/reorder", "/links/organize"}:
+        return "links_reordered"
+    if tail.startswith("/links/"):
+        return "link_deleted" if request.method == "DELETE" else "link_updated"
+    if tail == "/bookmarks/import":
+        return "bookmarks_imported"
+    if tail == "/import":
+        return "site_imported"
+    if tail == "/maintenance/bulk":
+        return "links_maintained"
+    return None
 
 
 async def authorized_site(
@@ -53,6 +97,11 @@ async def authorized_site(
     *,
     mutation: bool,
 ):
+    async def finish(site: Site) -> Site:
+        if mutation and (action := revision_action(request, slug)):
+            await RevisionService(session).capture(site.id, action)
+        return site
+
     auth = ManageAuth(session, settings)
     manage_authenticated = False
     try:
@@ -65,7 +114,7 @@ async def authorized_site(
             return site
         try:
             auth.check_csrf(manage_session, request.headers.get("X-CSRF-Token"))
-            return site
+            return await finish(site)
         except AuthorizationError:
             pass
 
@@ -84,7 +133,7 @@ async def authorized_site(
             raise AccountAuthenticationError
         if mutation:
             account.check_csrf(user_session, request.headers.get("X-CSRF-Token"))
-        return site
+        return await finish(site)
     except AccountAuthenticationError as error:
         code = "CSRF_FAILED" if manage_authenticated else "MANAGE_SESSION_REQUIRED"
         status_code = 403 if manage_authenticated else 401
@@ -347,6 +396,11 @@ async def batch_links(
         return [link_payload(item) for item in items]
     except (ResourceNotFoundError, SiteLimitError) as error:
         raise management_error(error) from error
+    except BatchLinkValidationError as error:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": str(error), "line": error.line_number},
+        ) from error
 
 
 @router.get("/{slug}/export")
@@ -388,20 +442,130 @@ async def import_bookmarks(
     request: Request,
     session: AsyncSession = Depends(get_session),
     settings: Settings = Depends(settings_from_request),
-) -> dict[str, int]:
+) -> dict[str, Any]:
     site = await authorized_site(slug, request, session, settings, mutation=True)
-    categories = BookmarkCodec.parse(data.html)
-    manager = SiteManager(session, settings, site)
-    try:
-        imported_categories, imported_links = await manager.import_bookmarks(
-            categories, data.mode
+    inspection = BookmarkCodec.inspect(data.html)
+    if not inspection.categories:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "BOOKMARK_FILE_NO_SUPPORTED_LINKS"},
         )
+    manager = SiteManager(session, settings, site)
+    plan = await manager.plan_bookmark_import(
+        inspection.categories,
+        mode=data.mode,
+        duplicate_strategy=data.duplicate_strategy,
+        source_categories=inspection.source_categories,
+        source_links=inspection.source_links,
+        unsupported_links=inspection.unsupported_links,
+    )
+    try:
+        result = await manager.import_bookmarks(plan)
+        result["imported_categories"] = plan.created_categories
+        return result
     except SiteLimitError as error:
         raise management_error(error) from error
-    return {
-        "imported_categories": imported_categories,
-        "imported_links": imported_links,
-    }
+
+
+@router.post("/{slug}/bookmarks/preview")
+async def preview_bookmarks(
+    slug: str,
+    data: BookmarkImport,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict[str, Any]:
+    site = await authorized_site(slug, request, session, settings, mutation=False)
+    inspection = BookmarkCodec.inspect(data.html)
+    if not inspection.categories:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "BOOKMARK_FILE_NO_SUPPORTED_LINKS"},
+        )
+    plan = await SiteManager(session, settings, site).plan_bookmark_import(
+        inspection.categories,
+        mode=data.mode,
+        duplicate_strategy=data.duplicate_strategy,
+        source_categories=inspection.source_categories,
+        source_links=inspection.source_links,
+        unsupported_links=inspection.unsupported_links,
+    )
+    return plan.payload()
+
+
+@router.get("/{slug}/maintenance")
+async def maintenance_report(
+    slug: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict[str, Any]:
+    site = await authorized_site(slug, request, session, settings, mutation=False)
+    return await LinkMaintenanceService(session, settings).report(site.id)
+
+
+@router.post("/{slug}/maintenance/check")
+async def check_links(
+    slug: str,
+    data: MaintenanceCheckRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict[str, Any]:
+    site = await authorized_site(slug, request, session, settings, mutation=True)
+    return await LinkMaintenanceService(session, settings).check_site(
+        site,
+        force=True,
+        limit=data.limit,
+    )
+
+
+@router.post("/{slug}/maintenance/bulk")
+async def bulk_maintain_links(
+    slug: str,
+    data: MaintenanceBulkRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict[str, int]:
+    site = await authorized_site(slug, request, session, settings, mutation=True)
+    try:
+        updated = await LinkMaintenanceService(session, settings).bulk(site.id, data.action)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": str(error)},
+        ) from error
+    return {"updated": updated}
+
+
+@router.get("/{slug}/revisions")
+async def list_revisions(
+    slug: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> list[dict[str, Any]]:
+    site = await authorized_site(slug, request, session, settings, mutation=False)
+    return await RevisionService(session).list(site.id)
+
+
+@router.post("/{slug}/revisions/{revision_id}/restore")
+async def restore_revision(
+    slug: str,
+    revision_id: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    settings: Settings = Depends(settings_from_request),
+) -> dict[str, Any]:
+    site = await authorized_site(slug, request, session, settings, mutation=True)
+    try:
+        await RevisionService(session).restore(site.id, revision_id)
+    except RevisionNotFoundError as error:
+        raise HTTPException(status_code=404, detail={"code": str(error)}) from error
+    session.expire_all()
+    loaded = await SiteService(session, settings).get_site(slug)
+    return SiteService.serialize(loaded, public=False)
 
 
 @router.post("/{slug}/clone", status_code=201)
@@ -458,33 +622,13 @@ async def import_site(
     settings: Settings = Depends(settings_from_request),
 ) -> dict:
     site = await authorized_site(slug, request, session, settings, mutation=True)
-    if data.mode == "replace":
-        await session.execute(delete(Category).where(Category.site_id == site.id))
-        await session.flush()
-    manager = SiteManager(session, settings, site)
-    for category_data in data.data.get("categories", []):
-        category = await manager.create_category(
-            CategoryCreate(
-                name=category_data.get("name", "未命名分类"),
-                description=category_data.get("description"),
-                icon=category_data.get("icon", "📁"),
-                is_visible=category_data.get("is_visible", True),
-            )
-        )
-        for link_data in category_data.get("links", []):
-            await manager.create_link(
-                LinkCreate(
-                    category_id=category.id,
-                    name=link_data.get("name", "未命名链接"),
-                    url=link_data.get("url", ""),
-                    description=link_data.get("description"),
-                    icon=link_data.get("icon", "🔗"),
-                    tags=link_data.get("tags", []),
-                    is_pinned=link_data.get("is_pinned", False),
-                    is_enabled=link_data.get("is_enabled", True),
-                    open_mode=link_data.get("open_mode", "new"),
-                )
-            )
+    try:
+        await SiteManager(session, settings, site).import_site_data(data.data, data.mode)
+    except SiteImportValidationError as error:
+        raise HTTPException(status_code=422, detail={"code": str(error)}) from error
+    except SiteLimitError as error:
+        raise management_error(error) from error
+    session.expire_all()
     loaded = await SiteService(session, settings).get_site(slug)
     return SiteService.serialize(loaded, public=False)
 

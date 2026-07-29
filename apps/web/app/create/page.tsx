@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { api, ApiError } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import type { CreateResult } from "@/lib/types";
 import { useI18n } from "@/components/locale-provider";
 
@@ -88,8 +89,12 @@ export default function CreatePage() {
   }
 
   async function copy(value: string, label: string) {
-    await navigator.clipboard.writeText(value);
-    toast.success(t("{label}已复制", { label }));
+    try {
+      await copyText(value);
+      toast.success(t("{label}已复制", { label }));
+    } catch {
+      toast.error(t("复制失败，请手动选择链接复制"));
+    }
   }
 
   function downloadRecovery() {

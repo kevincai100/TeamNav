@@ -15,6 +15,8 @@ TeamNav is a self-hosted, shareable navigation homepage for individuals and team
 - Site, category and link editing, collapsible folders, cross-folder drag-and-drop, optional batch tags and live preview
 - Atomic JSON/browser-bookmark import/export with actionable capacity errors, cloning and basic daily statistics
 - Automatic Chinese/English interface selection with a saved manual override
+- Bookmark import preview with merge/replace, duplicate handling and capacity checks
+- Link health checks, opt-in scheduled maintenance and recoverable change history
 - CAPTCHA, abuse reporting, admin report processing and site blocking
 - One-image SQLite deployment, or split SQLite, PostgreSQL and MySQL stacks with automatic migrations
 
@@ -72,6 +74,10 @@ an external PostgreSQL or MySQL server, set `DATABASE_URL` before starting the s
 
 Each workspace supports 200 folders and 2,000 bookmarks by default. Override
 `MAX_CATEGORIES_PER_SITE` and `MAX_LINKS_PER_SITE` when a deployment needs different limits.
+Automatic link checks are opt-in per workspace. Deployment-wide scheduling is controlled by
+`LINK_CHECK_SCHEDULER_ENABLED`, `LINK_CHECK_POLL_SECONDS`, `LINK_CHECK_TIMEOUT_SECONDS` and
+`LINK_CHECK_BATCH_SIZE`. Private and local network targets are blocked by default; only set
+`LINK_CHECK_ALLOW_PRIVATE_NETWORKS=true` on a trusted private deployment.
 
 The equivalent direct Docker command is:
 

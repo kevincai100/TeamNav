@@ -38,7 +38,7 @@ const webArguments = process.platform === "win32"
   : ["run", "dev", "--workspace", "@teamnav/web", "--", "--hostname", "127.0.0.1", "--port", "3020"];
 const web = spawn(webCommand, webArguments, {
   cwd: root,
-  env: { ...process.env, NEXT_PUBLIC_API_URL: apiUrl, NEXT_DIST_DIR: ".next-local" },
+  env: { ...process.env, NEXT_PUBLIC_API_URL: apiUrl },
   detached: true,
   windowsHide: true,
   stdio: "ignore",

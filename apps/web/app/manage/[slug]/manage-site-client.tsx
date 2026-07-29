@@ -13,9 +13,14 @@ import { CategoryIconPicker } from "@/components/category-icon-picker";
 import { SortableEditor } from "@/components/sortable-editor";
 import { useI18n } from "@/components/locale-provider";
 import { API_URL, api, ApiError } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { moveLinkBetweenCategories, reorderItems } from "@/lib/navigation";
 import { ACCENT_PRESETS, getWallpaperStyle } from "@/lib/personalization";
 import type { Category, NavLink, Site } from "@/lib/types";
+
+import { BookmarkImportDialog } from "./bookmark-import-dialog";
+import { MaintenancePanel } from "./maintenance-panel";
+import { RevisionPanel } from "./revision-panel";
 
 type SessionResponse = { site: Site; csrf_token: string };
 type Stats = { totals: { page_views: number; link_clicks: number }; daily: { date: string; page_views: number; link_clicks: number }[] };
@@ -72,6 +77,24 @@ export function ManageSiteClient({ slug }: { slug: string }) {
     return api<T>(path, { method, headers: { "X-CSRF-Token": csrf }, body: body === undefined ? undefined : JSON.stringify(body) });
   }
 
+  async function copy(value: string) {
+    try {
+      await copyText(value);
+      toast.success(t("链接已复制"));
+    } catch {
+      toast.error(t("复制失败，请手动选择链接复制"));
+    }
+  }
+
+  async function copyRotatedUrl() {
+    try {
+      await copyText(rotatedUrl);
+      window.location.href = rotatedUrl;
+    } catch {
+      toast.error(t("复制失败，请手动选择链接复制"));
+    }
+  }
+
   async function saveSettings() {
     if (!site) return;
     if (site.layout_config.wallpaper_url && !getWallpaperStyle(site.layout_config)) {
@@ -88,6 +111,7 @@ export function ManageSiteClient({ slug }: { slug: string }) {
         show_descriptions: site.display_config.show_descriptions,
         show_tags: site.display_config.show_tags,
         layout_config: site.layout_config,
+        maintenance_config: site.maintenance_config,
       };
       if (passwordChanged) payload.access_password = newPassword;
       const updated = await write<Site>(`/api/v1/manage/sites/${slug}`, "PATCH", payload);
@@ -176,25 +200,6 @@ export function ManageSiteClient({ slug }: { slug: string }) {
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = `teamnav-${slug}-bookmarks.html`; anchor.click(); URL.revokeObjectURL(url);
   }
 
-  async function importBookmarks(file: File) {
-    try {
-      const result = await write<{ imported_categories: number; imported_links: number }>(`/api/v1/manage/sites/${slug}/bookmarks/import`, "POST", { mode: "merge", html: await file.text() });
-      await loadSite(); toast.success(t("已导入 {count} 个书签", { count: result.imported_links }));
-    } catch (error) {
-      if (error instanceof ApiError && ["BOOKMARK_IMPORT_LINK_LIMIT_REACHED", "BOOKMARK_IMPORT_CATEGORY_LIMIT_REACHED"].includes(error.code)) {
-        const resource = error.code.includes("CATEGORY") ? t("分类") : t("书签");
-        toast.error(t("无法导入：当前已有 {current} 个{resource}，本次包含 {importing} 个，上限为 {limit} 个。", {
-          current: Number(error.detail.current ?? 0),
-          importing: Number(error.detail.importing ?? 0),
-          limit: Number(error.detail.limit ?? 0),
-          resource,
-        }));
-      } else {
-        toast.error(t("书签文件无效"));
-      }
-    }
-  }
-
   async function cloneSite() {
     if (!site || !window.confirm(t("克隆将创建一个独立站点，并生成新的私密编辑链接。继续吗？"))) return;
     try { const result = await write<{ manage_url: string }>(`/api/v1/manage/sites/${slug}/clone`, "POST", { name: t("{name} 副本", { name: site.name }) }); setCloneUrl(result.manage_url); }
@@ -250,7 +255,7 @@ export function ManageSiteClient({ slug }: { slug: string }) {
     <main className="manage-page">
       <div className="manage-toolbar">
         <div><span className="eyebrow">{t("管理模式")}</span><h1>{site.name}</h1></div>
-        <div className="manage-toolbar-actions"><button className="button secondary" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/s/${slug}`)}><Copy size={16} /> {t("公开链接")}</button><a className="button" href={`/s/${slug}`} target="_blank" rel="noopener noreferrer"><Eye size={16} /> {t("打开公开页")}</a></div>
+        <div className="manage-toolbar-actions"><button className="button secondary" onClick={() => void copy(`${window.location.origin}/s/${slug}`)}><Copy size={16} /> {t("公开链接")}</button><a className="button" href={`/s/${slug}`} target="_blank" rel="noopener noreferrer"><Eye size={16} /> {t("打开公开页")}</a></div>
       </div>
 
       <div className="mobile-view-switch" role="tablist" aria-label={t("编辑视图")}><button className={mobileView === "edit" ? "active" : ""} onClick={() => setMobileView("edit")}><Settings2 size={15} /> {t("编辑")}</button><button className={mobileView === "preview" ? "active" : ""} onClick={() => setMobileView("preview")}><Eye size={15} /> {t("预览")}</button></div>
@@ -410,7 +415,7 @@ export function ManageSiteClient({ slug }: { slug: string }) {
                 </div>
                 <div className="data-tool-row">
                   <div className="data-tool-kind"><span className="data-tool-icon"><FolderOpen size={17} /></span><span><strong>{t("浏览器书签")}</strong><small>HTML</small></span></div>
-                  <div className="data-actions"><button className="button secondary" onClick={exportBookmarks}><Download size={16} /> {t("导出浏览器书签")}</button><label className="button secondary"><FileUp size={16} /> {t("导入书签")}<input type="file" accept="text/html,.html" hidden onChange={(event) => event.target.files?.[0] && void importBookmarks(event.target.files[0])} /></label></div>
+                   <div className="data-actions"><button className="button secondary" onClick={exportBookmarks}><Download size={16} /> {t("导出浏览器书签")}</button><BookmarkImportDialog slug={slug} csrf={csrf} onImported={async () => { await loadSite(); }} /></div>
                 </div>
               </div>
             </div>
@@ -424,14 +429,24 @@ export function ManageSiteClient({ slug }: { slug: string }) {
               <div className="field"><label>{t("公开访问密码")}</label><input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setPasswordChanged(true); }} placeholder={t(site.password_protected ? "已启用；输入新密码可替换" : "输入至少 {count} 位密码以启用", { count: 6 })} />{passwordChanged && newPassword && newPassword.length < 6 && <span className="field-error">{t("密码至少 {count} 位", { count: 6 })}</span>}{site.password_protected && <button type="button" className="button ghost" onClick={() => { setNewPassword(""); setPasswordChanged(true); }}>{t("关闭访问密码")}</button>}</div>
               <button className="button" disabled={passwordChanged && newPassword.length > 0 && newPassword.length < 6} onClick={saveSettings}><Save size={16} /> {t("保存访问设置")}</button>
             </div>
-          </section>
+           </section>
 
-          <details className="editor-section" open>
+           <MaintenancePanel
+             slug={slug}
+             csrf={csrf}
+             site={site}
+             onSiteChange={setSite}
+             onSaveSettings={saveSettings}
+           />
+
+           <details className="editor-section" open>
             <summary><span><BarChart3 size={17} /> {t("基础统计")}</span></summary>
             <div className="editor-content stats-panel"><div><strong>{stats?.totals.page_views ?? 0}</strong><span>{t("页面访问")}</span></div><div><strong>{stats?.totals.link_clicks ?? 0}</strong><span>{t("链接点击")}</span></div><button className="icon-button" title={t("刷新统计")} onClick={() => void loadStats()}><RotateCw size={15} /></button></div>
-          </details>
+           </details>
 
-          <details className="editor-section danger-zone">
+           <RevisionPanel slug={slug} csrf={csrf} onRestored={setSite} />
+
+           <details className="editor-section danger-zone">
             <summary><span><Database size={17} /> {t("工作台与数据")}</span></summary>
             <div className="editor-content form-stack"><button className="button secondary" onClick={claimToAccount}><UserPlus size={16} /> {t("同步到个人账号")}</button><button className="button secondary" onClick={cloneSite}><CopyPlus size={16} /> {t("克隆站点")}</button><button className="button secondary" onClick={rotateKey}><RotateCw size={16} /> {t("轮换私密编辑链接")}</button><button className="button danger" onClick={deleteSite}><Trash2 size={16} /> {t("删除这个站点")}</button></div>
           </details>
@@ -443,7 +458,7 @@ export function ManageSiteClient({ slug }: { slug: string }) {
 
       {editingLink && <div className="modal-backdrop" role="presentation"><form className="modal panel" onSubmit={saveLink}><div className="panel-header"><h2>{t("编辑书签")}</h2><button type="button" className="icon-button" onClick={() => setEditingLink(null)}>×</button></div><div className="panel-body form-stack"><div className="field"><label>{t("名称")}</label><input value={editingLink.name} onChange={(event) => setEditingLink({ ...editingLink, name: event.target.value })} /></div><div className="field"><label>URL</label><input value={editingLink.url} onChange={(event) => setEditingLink({ ...editingLink, url: event.target.value })} /></div><div className="field"><label>{t("描述")}</label><textarea value={editingLink.description ?? ""} onChange={(event) => setEditingLink({ ...editingLink, description: event.target.value })} /></div><div className="field"><label>{t("标签（可选，逗号分隔）")}</label><input value={editingLink.tags.join(", ")} onChange={(event) => setEditingLink({ ...editingLink, tags: event.target.value.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 10) })} /></div><label className="toggle-field"><input type="checkbox" checked={editingLink.is_pinned} onChange={(event) => setEditingLink({ ...editingLink, is_pinned: event.target.checked })} />{t("置顶链接")}</label><label className="toggle-field"><input type="checkbox" checked={editingLink.is_enabled} onChange={(event) => setEditingLink({ ...editingLink, is_enabled: event.target.checked })} />{t("公开显示")}</label><button className="button"><Save size={16} /> {t("保存链接")}</button></div></form></div>}
 
-      {rotatedUrl && <div className="modal-backdrop"><div className="modal panel"><div className="panel-header"><h2>{t("新的私密编辑链接")}</h2></div><div className="panel-body form-stack"><div className="notice">{t("旧链接已经失效。请立即保存下面的新链接。")}</div><code className="rotated-url">{rotatedUrl}</code><button className="button" onClick={async () => { await navigator.clipboard.writeText(rotatedUrl); window.location.href = rotatedUrl; }}><Copy size={16} /> {t("复制并重新进入")}</button></div></div></div>}
+      {rotatedUrl && <div className="modal-backdrop"><div className="modal panel"><div className="panel-header"><h2>{t("新的私密编辑链接")}</h2></div><div className="panel-body form-stack"><div className="notice">{t("旧链接已经失效。请立即保存下面的新链接。")}</div><code className="rotated-url">{rotatedUrl}</code><button className="button" onClick={() => void copyRotatedUrl()}><Copy size={16} /> {t("复制并重新进入")}</button></div></div></div>}
       {cloneUrl && <div className="modal-backdrop"><div className="modal panel"><div className="panel-header"><h2>{t("克隆站点已创建")}</h2><button className="icon-button" onClick={() => setCloneUrl("")}>×</button></div><div className="panel-body form-stack"><div className="notice">{t("这是克隆站点唯一可恢复的私密编辑链接，请立即保存。")}</div><code className="rotated-url">{cloneUrl}</code><a className="button" href={cloneUrl}><CopyPlus size={16} /> {t("进入克隆站点")}</a></div></div></div>}
     </main>
   );

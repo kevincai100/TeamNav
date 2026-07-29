@@ -16,6 +16,11 @@ function makeLinks(count: number): NavLink[] {
     is_pinned: false,
     is_enabled: true,
     open_mode: "new",
+    health_status: "unchecked",
+    health_status_code: null,
+    health_error: null,
+    health_checked_at: null,
+    health_consecutive_failures: 0,
   }));
 }
 

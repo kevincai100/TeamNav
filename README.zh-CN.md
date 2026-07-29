@@ -15,6 +15,8 @@ TeamNav 是一个面向个人和团队、支持自托管与公开分享的导航
 - 支持站点、分类和书签编辑，目录折叠、跨目录拖动、批量标签和实时预览
 - 支持原子化 JSON/浏览器书签导入导出、容量错误提示、克隆和基础日统计
 - 根据浏览器语言自动选择中文或英文，也可以手动切换并保存偏好
+- 书签导入前可预览合并/覆盖、重复项处理和容量检查结果
+- 支持链接健康检查、按工作台启用的自动维护和可恢复的修改历史
 - 支持验证码、滥用举报、管理员处理和站点封禁
 - 支持单镜像 SQLite 部署，也支持拆分式 SQLite、PostgreSQL 和 MySQL，并自动执行数据库迁移
 
@@ -67,6 +69,11 @@ docker compose -f docker-compose.aio.yml up -d
 网站地址为 `http://localhost:3000`，只会创建一个应用容器。需要连接外部 PostgreSQL 或 MySQL 时，在启动同一个 AIO 部署前设置 `DATABASE_URL` 即可。
 
 每个工作台默认最多支持 200 个目录和 2,000 个书签。部署者可以通过 `MAX_CATEGORIES_PER_SITE` 和 `MAX_LINKS_PER_SITE` 修改限制。
+
+自动链接检查需要在每个工作台中主动开启。部署级调度可以通过 `LINK_CHECK_SCHEDULER_ENABLED`、
+`LINK_CHECK_POLL_SECONDS`、`LINK_CHECK_TIMEOUT_SECONDS` 和 `LINK_CHECK_BATCH_SIZE` 调整。
+默认禁止检查本机和私有网络地址；只有在可信内网部署中才应设置
+`LINK_CHECK_ALLOW_PRIVATE_NETWORKS=true`。
 
 等价的 Docker 命令如下：
 

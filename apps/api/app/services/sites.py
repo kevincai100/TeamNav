@@ -26,6 +26,11 @@ DEFAULT_LAYOUT_CONFIG = {
     "wallpaper_overlay": 40,
 }
 
+DEFAULT_MAINTENANCE_CONFIG = {
+    "link_check_enabled": False,
+    "check_interval_hours": 24,
+}
+
 
 class SiteNotFoundError(Exception):
     pass
@@ -64,6 +69,7 @@ class SiteService:
             ),
             allow_indexing=not self.settings.default_noindex,
             layout_config=dict(DEFAULT_LAYOUT_CONFIG),
+            maintenance_config=dict(DEFAULT_MAINTENANCE_CONFIG),
             display_config={
                 "show_search": True,
                 "show_updated_at": True,
@@ -101,6 +107,10 @@ class SiteService:
             theme=source.theme,
             layout_config=dict(source.layout_config),
             display_config=dict(source.display_config),
+            maintenance_config={
+                **DEFAULT_MAINTENANCE_CONFIG,
+                **(source.maintenance_config or {}),
+            },
             edit_key_hash=token_digest(edit_key, self.settings.secret_key),
             access_password_hash=source.access_password_hash,
             password_version=source.password_version,
@@ -209,6 +219,15 @@ class SiteService:
                         "is_pinned": link.is_pinned,
                         "is_enabled": link.is_enabled,
                         "open_mode": link.open_mode,
+                        "health_status": link.health_status,
+                        "health_status_code": link.health_status_code,
+                        "health_error": link.health_error,
+                        "health_checked_at": (
+                            link.health_checked_at.isoformat()
+                            if link.health_checked_at
+                            else None
+                        ),
+                        "health_consecutive_failures": link.health_consecutive_failures,
                         "category_id": category.id,
                     }
                 )
@@ -232,6 +251,10 @@ class SiteService:
             "allow_indexing": site.allow_indexing,
             "password_protected": bool(site.access_password_hash),
             "layout_config": {**DEFAULT_LAYOUT_CONFIG, **site.layout_config},
+            "maintenance_config": {
+                **DEFAULT_MAINTENANCE_CONFIG,
+                **(site.maintenance_config or {}),
+            },
             "display_config": {
                 "show_search": True,
                 "show_updated_at": True,

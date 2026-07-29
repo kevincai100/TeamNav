@@ -53,6 +53,11 @@ class LayoutConfig(BaseModel):
         return normalized
 
 
+class MaintenanceConfig(BaseModel):
+    link_check_enabled: bool = False
+    check_interval_hours: int = Field(default=24, ge=1, le=24 * 30)
+
+
 class SiteUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=300)
@@ -65,6 +70,7 @@ class SiteUpdate(BaseModel):
     show_descriptions: bool | None = None
     show_tags: bool | None = None
     layout_config: LayoutConfig | None = None
+    maintenance_config: MaintenanceConfig | None = None
     access_password: str | None = Field(default=None, max_length=128)
 
     @field_validator("access_password")
@@ -175,7 +181,16 @@ class ReportUpdate(BaseModel):
 
 class BookmarkImport(BaseModel):
     mode: Literal["replace", "merge"] = "merge"
+    duplicate_strategy: Literal["skip", "keep"] = "skip"
     html: str = Field(min_length=1, max_length=5_000_000)
+
+
+class MaintenanceCheckRequest(BaseModel):
+    limit: int = Field(default=50, ge=1, le=200)
+
+
+class MaintenanceBulkRequest(BaseModel):
+    action: Literal["disable_broken", "reset_health"]
 
 
 class CloneSite(BaseModel):

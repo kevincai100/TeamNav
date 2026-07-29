@@ -369,3 +369,63 @@ async def test_batch_links_accept_optional_tags(client: AsyncClient) -> None:
     assert response.status_code == 201
     assert response.json()[0]["tags"] == ["docs", "team"]
     assert response.json()[1]["tags"] == []
+
+
+@pytest.mark.asyncio
+async def test_batch_links_are_atomic_when_a_later_line_is_invalid(client: AsyncClient) -> None:
+    created = await create_site(client)
+    slug, csrf = await manage(client, created)
+    category = await client.post(
+        f"/api/v1/manage/sites/{slug}/categories",
+        headers={"X-CSRF-Token": csrf},
+        json={"name": "Resources"},
+    )
+    response = await client.post(
+        f"/api/v1/manage/sites/{slug}/links/batch",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "category_id": category.json()["id"],
+            "lines": "Docs | https://example.com/docs\nUnsafe | javascript:alert(1)",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {"code": "BATCH_LINK_INVALID", "line": 2}
+    managed = (await client.get(f"/api/v1/manage/sites/{slug}")).json()
+    assert managed["categories"][0]["links"] == []
+
+
+@pytest.mark.asyncio
+async def test_json_replace_import_is_atomic_when_payload_is_invalid(client: AsyncClient) -> None:
+    created = await create_site(client)
+    slug, csrf = await manage(client, created)
+    await client.post(
+        f"/api/v1/manage/sites/{slug}/categories",
+        headers={"X-CSRF-Token": csrf},
+        json={"name": "Keep me"},
+    )
+
+    response = await client.post(
+        f"/api/v1/manage/sites/{slug}/import",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "mode": "replace",
+            "data": {
+                "categories": [
+                    {
+                        "name": "First",
+                        "links": [{"name": "Valid", "url": "https://example.com"}],
+                    },
+                    {
+                        "name": "Second",
+                        "links": [{"name": "Invalid", "url": "javascript:alert(1)"}],
+                    },
+                ]
+            },
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "SITE_IMPORT_INVALID"
+    managed = (await client.get(f"/api/v1/manage/sites/{slug}")).json()
+    assert [category["name"] for category in managed["categories"]] == ["Keep me"]

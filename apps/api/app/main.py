@@ -1,5 +1,7 @@
+import asyncio
 import time
 import uuid
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,12 +14,34 @@ from app.api.manage import router as manage_router
 from app.api.sites import router as sites_router
 from app.core.config import Settings, get_settings
 from app.db import Database, create_database
+from app.services.maintenance import maintenance_loop
 
 
 def create_app(settings: Settings | None = None, database: Database | None = None) -> FastAPI:
     current_settings = settings or get_settings()
     current_database = database or create_database(current_settings.database_url)
-    app = FastAPI(title=current_settings.app_name, version="0.1.0")
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        maintenance_task: asyncio.Task[None] | None = None
+        if current_settings.link_check_scheduler_enabled:
+            maintenance_task = asyncio.create_task(
+                maintenance_loop(current_database, current_settings),
+                name="teamnav-link-maintenance",
+            )
+        try:
+            yield
+        finally:
+            if maintenance_task is not None:
+                maintenance_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await maintenance_task
+
+    app = FastAPI(
+        title=current_settings.app_name,
+        version="0.1.0",
+        lifespan=lifespan,
+    )
     app.state.settings = current_settings
     app.state.database = current_database
     app.add_middleware(

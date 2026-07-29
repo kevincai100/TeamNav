@@ -10,6 +10,11 @@ export type NavLink = {
   is_pinned: boolean;
   is_enabled: boolean;
   open_mode: "new" | "same";
+  health_status: "unchecked" | "healthy" | "warning" | "broken" | "blocked";
+  health_status_code: number | null;
+  health_error: string | null;
+  health_checked_at: string | null;
+  health_consecutive_failures: number;
 };
 
 export type Category = {
@@ -51,6 +56,10 @@ export type Site = {
     show_visit_count?: boolean;
     show_descriptions?: boolean;
     show_tags?: boolean;
+  };
+  maintenance_config: {
+    link_check_enabled: boolean;
+    check_interval_hours: number;
   };
   visit_count: number;
   updated_at: string;
