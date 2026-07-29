@@ -67,6 +67,9 @@ test("create, manage, search, and rotate the edit key", async ({ page, browser }
     mimeType: "text/html",
     buffer: Buffer.from("<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p><DT><H3>Imported Folder</H3><DL><p><DT><A HREF=\"https://example.com/imported\">Imported Link</A></DL><p></DL><p>"),
   });
+  const importDialog = page.locator(".bookmark-import-dialog");
+  await expect(importDialog.getByText("Imported Folder", { exact: true })).toBeVisible();
+  await importDialog.getByRole("button", { name: "确认导入 1 项" }).click();
   await expect(page.getByText("已导入 1 个书签")).toBeVisible();
   const importedFolder = page.locator(".manage-category").filter({
     has: page.locator('.category-name-input[value="Imported Folder"]'),
