@@ -27,7 +27,9 @@ TeamNav 是一个面向个人和团队、支持自托管与公开分享的导航
 - `packages/templates`：带版本的内置模板
 - `docs`：架构、运维和安全说明
 
-详细资料见[架构说明](docs/architecture.md)、[运维说明](docs/operations.md)和[安全说明](docs/security.md)。
+详细资料见[架构说明](docs/architecture.md)、[中文运维说明](docs/operations.zh-CN.md)和[安全说明](docs/security.md)。
+公开镜像也可以直接从 Docker Hub 拉取：[一体化镜像](https://hub.docker.com/r/glfc2b/teamnav-aio)、
+[API 镜像](https://hub.docker.com/r/glfc2b/teamnav-api)和[前端镜像](https://hub.docker.com/r/glfc2b/teamnav-web)。
 
 ## 本地开发
 
@@ -83,7 +85,7 @@ docker run -d --name teamnav --restart unless-stopped \
   --env-file .env \
   -p 3000:8080 \
   -v teamnav-data:/data \
-  ghcr.io/kevincai100/teamnav-aio:latest
+  glfc2b/teamnav-aio:latest
 ```
 
 更新一体化部署且保留数据：
@@ -104,22 +106,25 @@ docker compose pull
 docker compose up -d --no-build
 ```
 
-轻量 SQLite，适合单实例：
+轻量拆分式 SQLite，适合单实例：
 
 ```bash
-docker compose up -d --build
+docker compose pull
+docker compose up -d --no-build
 ```
 
 内置 PostgreSQL，推荐用于正式环境：
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml pull
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --no-build
 ```
 
 内置 MySQL：
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml pull
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --no-build
 ```
 
 使用外部 PostgreSQL 或 MySQL 时，在 `.env` 中设置 `DATABASE_URL`，然后使用基础命令。此时 SQLite 数据卷仍会挂载，但不会使用。`.env.example` 中提供了连接示例。API 容器每次启动时都会自动迁移数据库表。
@@ -145,7 +150,9 @@ docker compose up -d
 
 `main` 分支构建的镜像会同时发布为 `main` 和 `latest`。`v0.1.0` 等版本标签还会发布对应的语义化版本镜像。正式环境可以把 `TEAMNAV_VERSION` 固定到具体版本，而不是一直跟随 `latest`。
 
-公网部署时必须启用 TLS，把 `APP_URL` 和 `CORS_ORIGINS` 设置为公网网关地址，并设置 `COOKIE_SECURE=true`。为保证镜像可移植，`NEXT_PUBLIC_API_URL` 应保持为空。升级、备份和恢复步骤见[运维说明](docs/operations.md)。
+公网部署时必须启用 TLS，把 `APP_URL` 和 `CORS_ORIGINS` 设置为公网网关地址，并设置 `COOKIE_SECURE=true`。为保证镜像可移植，`NEXT_PUBLIC_API_URL` 应保持为空。升级、备份和恢复步骤见[中文运维说明](docs/operations.zh-CN.md)。
+
+数据库原生备份只能恢复到相同类型的数据库。SQLite 迁移到 PostgreSQL 或 MySQL 属于跨数据库数据迁移，不是直接恢复数据库文件。
 
 ## 验证命令
 

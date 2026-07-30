@@ -2,7 +2,7 @@
 
 ## Install
 
-Copy `.env.example` to `.env`, replace `SECRET_KEY` and `ADMIN_TOKEN` with long random values, then choose a database mode.
+Copy `.env.example` to `.env`, replace `SECRET_KEY` and `ADMIN_TOKEN` with long random values, then choose a database mode. Published images default to the public `glfc2b/teamnav-*` Docker Hub repositories. Bundled database passwords are interpolated into `DATABASE_URL`, so restrict them to URL-safe characters such as letters, digits, `.`, `_`, `~`, and `-`.
 
 All-in-one SQLite deployment (one application container):
 
@@ -25,14 +25,17 @@ docker compose up -d --no-build
 SQLite (single-instance, lightweight):
 
 ```bash
-docker compose up -d --build
+docker compose pull
+docker compose up -d --no-build
 ```
 
 Bundled PostgreSQL (recommended) or MySQL:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
-docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml pull
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --no-build
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml pull
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --no-build
 ```
 
 For an external database, set `DATABASE_URL` to a `postgresql+asyncpg://` or `mysql+asyncmy://` URL and use the base command. URL-encode database credentials containing reserved characters.
@@ -66,28 +69,91 @@ the split deployment with multiple replicas and an external database when zero-d
 
 ## Backup and restore
 
-For split SQLite, back up the `teamnav-sqlite` volume while the API is stopped. For AIO SQLite, stop
-the container and copy the database before upgrading:
+Create a host backup directory first. Keep it outside source control and copy encrypted backups to
+another machine or object store.
+
+```bash
+mkdir -p backups
+```
+
+Native database backups restore into the same database engine. They are not a cross-engine migration
+format. Always create a fresh backup immediately before a restore.
+
+### SQLite
+
+SQLite backups are copied while the application process is stopped, so the database file and any
+journal state are consistent. For AIO SQLite:
 
 ```bash
 docker compose -f docker-compose.aio.yml stop teamnav
-docker compose -f docker-compose.aio.yml cp teamnav:/data/teamnav.db ./teamnav.db
+docker compose -f docker-compose.aio.yml cp teamnav:/data/teamnav.db ./backups/teamnav-aio.db
 docker compose -f docker-compose.aio.yml start teamnav
 ```
 
-For bundled PostgreSQL, create a compressed backup:
+For split SQLite, replace the service and output name:
 
 ```bash
-docker compose exec -T postgres pg_dump -U teamnav -d teamnav -Fc > teamnav.dump
+docker compose stop api
+docker compose cp api:/data/teamnav.db ./backups/teamnav-sqlite.db
+docker compose start api
 ```
 
-Restore into an empty database:
+To restore AIO SQLite, stop the application, copy the file into the data volume, repair ownership,
+run SQLite's integrity check, and then wait for the migrated application to become healthy:
 
 ```bash
-docker compose exec -T postgres pg_restore -U teamnav -d teamnav --clean --if-exists < teamnav.dump
+docker compose -f docker-compose.aio.yml stop teamnav
+docker compose -f docker-compose.aio.yml cp ./backups/teamnav-aio.db teamnav:/data/teamnav.db
+docker compose -f docker-compose.aio.yml run --rm --no-deps --user root --entrypoint chown teamnav teamnav:teamnav /data/teamnav.db
+docker compose -f docker-compose.aio.yml run --rm --no-deps --entrypoint python teamnav -c "import sqlite3; db=sqlite3.connect('/data/teamnav.db'); result=db.execute('PRAGMA integrity_check').fetchone()[0]; assert result == 'ok', result"
+docker compose -f docker-compose.aio.yml up -d --wait
 ```
 
-For MySQL, use `mysqldump` and restore into an empty `teamnav` database. Always use the same Compose file combination for operational commands as for startup.
+For split SQLite, use the same sequence with the base Compose file and the `api` service instead of
+`teamnav`.
+
+### PostgreSQL
+
+Create a compressed PostgreSQL backup inside the database container, copy it out, and remove the
+temporary container copy:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml exec -T postgres sh -ceu 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f /tmp/teamnav.dump'
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml cp postgres:/tmp/teamnav.dump ./backups/teamnav-postgres.dump
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml exec -T postgres rm -f /tmp/teamnav.dump
+```
+
+Restore after stopping the API. `pg_restore --list` rejects a malformed archive before database
+objects are changed:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml stop api
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml cp ./backups/teamnav-postgres.dump postgres:/tmp/teamnav.dump
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml exec -T postgres pg_restore --list /tmp/teamnav.dump
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml exec -T postgres sh -ceu 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner --no-privileges --exit-on-error --single-transaction /tmp/teamnav.dump'
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml exec -T postgres rm -f /tmp/teamnav.dump
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --wait
+```
+
+### MySQL
+
+Create a transactionally consistent MySQL SQL dump:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml exec -T mysql sh -ceu 'MYSQL_PWD="$MYSQL_PASSWORD" mysqldump -u "$MYSQL_USER" --single-transaction --quick --routines --triggers --hex-blob --no-tablespaces "$MYSQL_DATABASE" > /tmp/teamnav.sql'
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml cp mysql:/tmp/teamnav.sql ./backups/teamnav-mysql.sql
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml exec -T mysql rm -f /tmp/teamnav.sql
+```
+
+Restore into a newly created `teamnav` database while the API is stopped:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml stop api
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml cp ./backups/teamnav-mysql.sql mysql:/tmp/teamnav.sql
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml exec -T mysql sh -ceu 'test -s /tmp/teamnav.sql; MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root -e "DROP DATABASE IF EXISTS teamnav; CREATE DATABASE teamnav CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"; MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root teamnav < /tmp/teamnav.sql'
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml exec -T mysql rm -f /tmp/teamnav.sql
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --wait
+```
 
 Backups contain password and capability-key hashes. Encrypt backup files, restrict access, and test restores regularly. Individual site JSON exports intentionally exclude all secrets and can be downloaded from the management page.
 

@@ -28,6 +28,8 @@ TeamNav is a self-hosted, shareable navigation homepage for individuals and team
 - `docs`: architecture, operations and security notes
 
 See [architecture](docs/architecture.md), [operations](docs/operations.md), and [security](docs/security.md).
+The published images are also available on Docker Hub: [AIO](https://hub.docker.com/r/glfc2b/teamnav-aio),
+[API](https://hub.docker.com/r/glfc2b/teamnav-api), and [web](https://hub.docker.com/r/glfc2b/teamnav-web).
 
 ## Local development
 
@@ -87,7 +89,7 @@ docker run -d --name teamnav --restart unless-stopped \
   --env-file .env \
   -p 3000:8080 \
   -v teamnav-data:/data \
-  ghcr.io/kevincai100/teamnav-aio:latest
+  glfc2b/teamnav-aio:latest
 ```
 
 Update the AIO deployment without losing data:
@@ -111,22 +113,25 @@ docker compose pull
 docker compose up -d --no-build
 ```
 
-Lightweight SQLite, suitable for one application instance:
+Lightweight split SQLite, suitable for one application instance:
 
 ```bash
-docker compose up -d --build
+docker compose pull
+docker compose up -d --no-build
 ```
 
 Bundled PostgreSQL, recommended for production:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml pull
+docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --no-build
 ```
 
 Bundled MySQL:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml pull
+docker compose -f docker-compose.yml -f docker-compose.mysql.yml up -d --no-build
 ```
 
 To use an external PostgreSQL or MySQL server, set `DATABASE_URL` in `.env` and use the lightweight base command; the SQLite volume remains mounted but is unused. Examples are provided in `.env.example`. Database tables are migrated automatically whenever the API container starts.
@@ -157,6 +162,9 @@ specific version rather than following `latest`.
 For internet deployments, use TLS, set `APP_URL` and `CORS_ORIGINS` to the public gateway origin,
 and set `COOKIE_SECURE=true`. `NEXT_PUBLIC_API_URL` should remain empty for the portable same-origin
 image. Detailed upgrade, backup and restore steps are in [operations](docs/operations.md).
+
+Native backups restore into the same database engine. Cross-engine migration, such as SQLite to
+PostgreSQL, is a separate data-migration operation rather than a database-file restore.
 
 ## Verification
 

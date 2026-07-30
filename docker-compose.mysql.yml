@@ -1,6 +1,8 @@
 services:
   mysql:
     image: mysql:8.4
+    restart: unless-stopped
+    stop_grace_period: 30s
     environment:
       MYSQL_DATABASE: teamnav
       MYSQL_USER: teamnav

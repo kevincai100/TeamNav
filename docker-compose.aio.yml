@@ -1,6 +1,6 @@
 services:
   teamnav:
-    image: ${TEAMNAV_AIO_IMAGE:-ghcr.io/kevincai100/teamnav-aio}:${TEAMNAV_VERSION:-latest}
+    image: ${TEAMNAV_AIO_IMAGE:-glfc2b/teamnav-aio}:${TEAMNAV_VERSION:-latest}
     build:
       context: .
       dockerfile: deploy/aio/Dockerfile

@@ -1,6 +1,6 @@
 services:
   api:
-    image: ${TEAMNAV_API_IMAGE:-ghcr.io/kevincai100/teamnav-api}:${TEAMNAV_VERSION:-latest}
+    image: ${TEAMNAV_API_IMAGE:-glfc2b/teamnav-api}:${TEAMNAV_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -40,7 +40,7 @@ services:
       retries: 10
 
   web:
-    image: ${TEAMNAV_WEB_IMAGE:-ghcr.io/kevincai100/teamnav-web}:${TEAMNAV_VERSION:-latest}
+    image: ${TEAMNAV_WEB_IMAGE:-glfc2b/teamnav-web}:${TEAMNAV_VERSION:-latest}
     build:
       context: .
       dockerfile: apps/web/Dockerfile

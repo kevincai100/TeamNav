@@ -1,6 +1,8 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
+    stop_grace_period: 30s
     environment:
       POSTGRES_DB: teamnav
       POSTGRES_USER: teamnav
